@@ -7,22 +7,8 @@ const openai = new OpenAI({
 });
 
 export async function POST(req: Request) {
-  // Handle CORS
   const headersList = headers();
-  const origin = headersList.get('origin') || '';
   
-  // Handle OPTIONS preflight request
-  if (req.method === 'OPTIONS') {
-    return new NextResponse(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
-  }
-
   try {
     const { title, content, url } = await req.json();
 
@@ -30,9 +16,7 @@ export async function POST(req: Request) {
     
     Title: ${title}
     URL: ${url}
-    Content: ${content}
-    
-    Example response format: ["technology", "productivity"]`;
+    Content: ${content}`;
 
     const completion = await openai.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
@@ -46,8 +30,7 @@ export async function POST(req: Request) {
     
     try {
       tags = JSON.parse(tagsResponse || '[]');
-    } catch (e) {
-      // If parsing fails, extract words from the response
+    } catch {
       tags = tagsResponse?.match(/["'](\w+)["']/g)?.map(t => t.replace(/["']/g, '')) || [];
     }
 

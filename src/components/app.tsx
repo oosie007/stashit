@@ -26,8 +26,8 @@ export const App = () => {
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<'all' | SavedItem['type']>('all');
+  const [searchQuery] = useState('');
+  const [activeCategory] = useState<'all' | SavedItem['type']>('all');
 
   useEffect(() => {
     fetchStashedItems();
