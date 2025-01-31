@@ -8,6 +8,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Trash2, Quote } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface SavedItem {
   id: number
@@ -23,16 +33,16 @@ interface SavedItem {
 }
 
 export const App = () => {
-  const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery] = useState('');
-  const [activeCategory] = useState<'all' | SavedItem['type']>('all');
+  const [savedItems, setSavedItems] = useState<SavedItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<'all' | SavedItem['type']>('all')
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
-    fetchStashedItems();
+    fetchStashedItems()
 
-    // Setup realtime subscription
     const channel = supabase
       .channel('stashed_items_changes')
       .on(
@@ -43,8 +53,8 @@ export const App = () => {
           table: 'stashed_items',
         },
         (payload) => {
-          console.log('New item received:', payload);
-          setSavedItems((current) => [payload.new as SavedItem, ...current]);
+          console.log('New item received:', payload)
+          setSavedItems((current) => [payload.new as SavedItem, ...current])
         }
       )
       .on(
@@ -55,81 +65,143 @@ export const App = () => {
           table: 'stashed_items',
         },
         (payload) => {
-          console.log('Item deleted:', payload);
+          console.log('Item deleted:', payload)
           setSavedItems((current) =>
             current.filter((item) => item.id !== payload.old.id)
-          );
+          )
         }
       )
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-      });
+      .subscribe()
 
     return () => {
-      channel.unsubscribe();
-    };
-  }, []);
+      channel.unsubscribe()
+    }
+  }, [])
 
   const fetchStashedItems = async () => {
     try {
-      setLoading(true);
+      setLoading(true)
       const { data, error: dbError } = await supabase
         .from('stashed_items')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
 
-      if (dbError) throw dbError;
+      if (dbError) throw dbError
 
-      setSavedItems(data || []);
+      setSavedItems(data || [])
     } catch (err) {
-      console.error('Error fetching items:', err);
-      setError('Failed to fetch saved items');
+      console.error('Error fetching items:', err)
+      setError('Failed to fetch saved items')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleDelete = async (id: number) => {
     try {
       const { error: deleteError } = await supabase
         .from('stashed_items')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
 
-      if (deleteError) throw deleteError;
+      if (deleteError) throw deleteError
     } catch (err) {
-      console.error('Error deleting item:', err);
-      setError('Failed to delete item');
+      console.error('Error deleting item:', err)
+      setError('Failed to delete item')
     }
-  };
+  }
 
   const filterItems = (items: SavedItem[]) => {
     return items.filter(item => {
-      const searchLower = searchQuery.toLowerCase();
+      const searchLower = searchQuery.toLowerCase()
       const matchesSearch = 
         item.title.toLowerCase().includes(searchLower) ||
         (item.content?.toLowerCase().includes(searchLower)) ||
         (item.summary?.toLowerCase().includes(searchLower)) ||
-        (item.tags.some(tag => tag.toLowerCase().includes(searchLower)));
+        (item.tags.some(tag => tag.toLowerCase().includes(searchLower)))
       
-      const matchesCategory = activeCategory === 'all' || item.type === activeCategory;
-      return matchesSearch && matchesCategory;
-    });
-  };
+      const matchesCategory = activeCategory === 'all' || item.type === activeCategory
+      return matchesSearch && matchesCategory
+    })
+  }
+
+  const handleAddItem = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const newItem = {
+      type: 'link',
+      title: formData.get('title') as string,
+      url: formData.get('url') as string,
+      content: formData.get('content') as string,
+      tags: (formData.get('tags') as string).split(',').map(tag => tag.trim()),
+    }
+
+    try {
+      const { error: insertError } = await supabase
+        .from('stashed_items')
+        .insert([newItem])
+
+      if (insertError) throw insertError
+      setIsModalOpen(false)
+    } catch (err) {
+      console.error('Error adding item:', err)
+      setError('Failed to add item')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
       <header className="border-b">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-4">
             <h1 className="text-2xl font-bold">StashIt</h1>
-            <ThemeToggle />
+            
+            <div className="flex-1 max-w-xl">
+              <input
+                type="search"
+                placeholder="Search stashed items..."
+                className="w-full px-4 py-2 rounded-md border bg-background"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button>Add Item</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Item</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleAddItem} className="space-y-4">
+                    <div>
+                      <Label htmlFor="title">Title</Label>
+                      <Input id="title" name="title" required />
+                    </div>
+                    <div>
+                      <Label htmlFor="url">URL</Label>
+                      <Input id="url" name="url" type="url" required />
+                    </div>
+                    <div>
+                      <Label htmlFor="content">Content</Label>
+                      <Textarea id="content" name="content" />
+                    </div>
+                    <div>
+                      <Label htmlFor="tags">Tags (comma-separated)</Label>
+                      <Input id="tags" name="tags" placeholder="tag1, tag2, tag3" />
+                    </div>
+                    <Button type="submit">Save</Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         {loading ? (
           <div>Loading...</div>
@@ -146,9 +218,9 @@ export const App = () => {
                       alt={`Image for ${item.title}`}
                       className="object-cover w-full h-full"
                       onError={(e) => {
-                        console.error('Image failed to load:', item.image_url);
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
+                        console.error('Image failed to load:', item.image_url)
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
                       }}
                     />
                   </div>
@@ -196,5 +268,5 @@ export const App = () => {
         )}
       </main>
     </div>
-  );
-};
+  )
+}
