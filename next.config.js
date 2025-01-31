@@ -1,21 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['*'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
-        pathname: '**',
+        hostname: '*',
       },
       {
         protocol: 'http',
-        hostname: '**',
-        pathname: '**',
+        hostname: '*',
       }
     ],
   },
-  ignoreDuringBuilds: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 }
 
 module.exports = nextConfig 
