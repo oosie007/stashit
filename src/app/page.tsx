@@ -1,7 +1,16 @@
 'use client'
 
-import { App } from "@/components/app"
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function Home() {
-  return <App />
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to auth page by default
+    router.push('/auth')
+  }, [router])
+
+  return null
 }
