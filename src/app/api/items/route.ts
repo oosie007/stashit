@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
 // Helper function to add CORS headers
 function corsHeaders(response: NextResponse) {
@@ -12,18 +12,21 @@ function corsHeaders(response: NextResponse) {
 export async function POST(req: Request) {
   try {
     const data = await req.json();
-    const item = await prisma.item.create({
-      data: {
+    const { error } = await supabase
+      .from('stashed_items')
+      .insert([{
         type: data.type,
         title: data.title,
         url: data.url,
         content: data.content,
-        tags: data.tags
-      }
-    });
+        tags: data.tags,
+        user_id: data.user_id
+      }]);
+    
+    if (error) throw error;
     
     return corsHeaders(
-      NextResponse.json(item)
+      NextResponse.json({ success: true })
     );
   } catch (error) {
     console.error('Error creating item:', error);
