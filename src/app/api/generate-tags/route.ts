@@ -1,22 +1,37 @@
 import OpenAI from 'openai';
-import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Helper function to add CORS headers
+function corsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  return response;
+}
+
 export async function POST(req: Request) {
-  const headersList = headers();
-  
   try {
     const { title, content, url } = await req.json();
+
+    if (!title || !content || !url) {
+      return corsHeaders(
+        NextResponse.json(
+          { error: 'Missing required fields' },
+          { status: 400 }
+        )
+      );
+    }
 
     const prompt = `Given the following webpage content, generate 2-3 relevant tags that categorize this content. Return only the tags as a JSON array of strings, nothing else.
     
     Title: ${title}
     URL: ${url}
-    Content: ${content}`;
+    Content: ${content.substring(0, 1000)}`; // Limit content length
 
     const completion = await openai.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
@@ -34,42 +49,22 @@ export async function POST(req: Request) {
       tags = tagsResponse?.match(/["'](\w+)["']/g)?.map(t => t.replace(/["']/g, '')) || [];
     }
 
-    // Return response with CORS headers
-    return new NextResponse(JSON.stringify({ tags }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
+    return corsHeaders(
+      NextResponse.json({ tags })
+    );
   } catch (error) {
     console.error('Error generating tags:', error);
-    
-    // Return error response with CORS headers
-    return new NextResponse(
-      JSON.stringify({ error: 'Failed to generate tags' }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
-      }
+    return corsHeaders(
+      NextResponse.json(
+        { error: 'Failed to generate tags', details: error instanceof Error ? error.message : 'Unknown error' },
+        { status: 500 }
+      )
     );
   }
 }
 
-// Add OPTIONS handler for CORS preflight requests
 export async function OPTIONS(req: Request) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+  return corsHeaders(
+    new NextResponse(null, { status: 200 })
+  );
 } 
