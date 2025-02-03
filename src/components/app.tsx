@@ -18,6 +18,16 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { User } from '@supabase/supabase-js'
+import { ChevronDown } from 'lucide-react'
 
 interface SavedItem {
   id: number
@@ -44,6 +54,7 @@ export const App = ({ userId }: AppProps) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<'all' | SavedItem['type']>('all')
   const [open, setOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     fetchStashedItems()
@@ -81,6 +92,14 @@ export const App = ({ userId }: AppProps) => {
     return () => {
       channel.unsubscribe()
     }
+  }, [])
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
   }, [])
 
   const fetchStashedItems = async () => {
@@ -212,9 +231,25 @@ export const App = ({ userId }: AppProps) => {
                   </form>
                 </DialogContent>
               </Dialog>
-              <Button onClick={handleLogout} variant="outline">
-                Logout
-              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-2">
+                    <span className="hidden sm:inline-block">
+                      {user?.email}
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <ThemeToggle />
             </div>
           </div>
