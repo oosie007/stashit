@@ -162,7 +162,7 @@ export const App = ({ userId }: AppProps) => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    window.location.href = '/auth'
+    window.location.href = '/'
   }
 
   return (
