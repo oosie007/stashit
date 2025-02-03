@@ -44,7 +44,7 @@ export default function Home() {
           <div className="lg:hidden">
             <h1 className="text-2xl font-bold">StashIt</h1>
           </div>
-          <Button variant="outline" onClick={() => router.push('/auth')}>
+          <Button variant="outline" onClick={() => router.push('/auth?mode=login')}>
             Login
           </Button>
         </div>
@@ -60,7 +60,7 @@ export default function Home() {
           <div className="space-y-4">
             <Button 
               className="w-full" 
-              onClick={() => router.push('/auth')}
+              onClick={() => router.push('/auth?mode=register')}
             >
               Sign up with Email
             </Button>

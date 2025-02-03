@@ -1,20 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useRouter } from 'next/navigation'
 
 export default function AuthPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<'login' | 'register'>('login')
-  const router = useRouter()
+
+  useEffect(() => {
+    // Set initial mode from URL parameter
+    const urlMode = searchParams.get('mode')
+    if (urlMode === 'login' || urlMode === 'register') {
+      setMode(urlMode)
+    }
+  }, [searchParams])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,7 +96,12 @@ export default function AuthPage() {
               type="button"
               variant="ghost"
               className="w-full"
-              onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+              onClick={() => {
+                const newMode = mode === 'login' ? 'register' : 'login'
+                setMode(newMode)
+                // Update URL without refreshing the page
+                router.push(`/auth?mode=${newMode}`)
+              }}
             >
               {mode === 'login' ? 'Need an account? Register' : 'Have an account? Login'}
             </Button>
