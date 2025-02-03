@@ -19,7 +19,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     // Set initial mode from URL parameter
-    const urlMode = searchParams.get('mode')
+    const urlMode = searchParams?.get('mode')
     if (urlMode === 'login' || urlMode === 'register') {
       setMode(urlMode)
     }
