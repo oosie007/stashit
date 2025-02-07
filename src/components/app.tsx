@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Trash2, Quote } from 'lucide-react'
+import { Trash2, Quote, LayoutGrid, List } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import {
   Dialog,
@@ -47,6 +47,9 @@ interface AppProps {
   userId: string
 }
 
+// Add layout type
+type LayoutType = 'card' | 'list'
+
 export const App = ({ userId }: AppProps) => {
   const [savedItems, setSavedItems] = useState<SavedItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,6 +58,7 @@ export const App = ({ userId }: AppProps) => {
   const [activeCategory, setActiveCategory] = useState<'all' | SavedItem['type']>('all')
   const [open, setOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
+  const [layout, setLayout] = useState<LayoutType>('card')
 
   useEffect(() => {
     fetchStashedItems()
@@ -184,143 +188,254 @@ export const App = ({ userId }: AppProps) => {
     window.location.href = '/'
   }
 
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center gap-4">
-            <h1 className="text-2xl font-bold">StashIt</h1>
-            
-            <div className="flex-1 max-w-xl">
-              <input
-                type="search"
-                placeholder="Search stashed items..."
-                className="w-full px-4 py-2 rounded-md border bg-background"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+  const renderCardView = (items: SavedItem[]) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {items.map((item) => (
+        <Card key={item.id} className="relative group">
+          {item.image_url && item.type === 'link' && (
+            <div className="relative w-full h-48 overflow-hidden bg-muted">
+              <img
+                src={item.image_url}
+                alt={`Image for ${item.title}`}
+                className="object-cover w-full h-full"
+                onError={(e) => {
+                  console.error('Image failed to load:', item.image_url)
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
               />
             </div>
-
-            <div className="flex items-center gap-2">
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button>StashIt</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Item</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleAddItem} className="space-y-4">
-                    <div>
-                      <Label htmlFor="title">Title</Label>
-                      <Input id="title" name="title" required />
-                    </div>
-                    <div>
-                      <Label htmlFor="url">URL</Label>
-                      <Input id="url" name="url" type="url" required />
-                    </div>
-                    <div>
-                      <Label htmlFor="content">Content</Label>
-                      <Textarea id="content" name="content" />
-                    </div>
-                    <div>
-                      <Label htmlFor="tags">Tags (comma-separated)</Label>
-                      <Input id="tags" name="tags" placeholder="tag1, tag2, tag3" />
-                    </div>
-                    <Button type="submit">Save</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2">
-                    <span className="hidden sm:inline-block">
-                      {user?.email}
-                    </span>
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <ThemeToggle />
+          )}
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-base font-semibold">
+              <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {item.title}
+              </a>
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+              onClick={() => handleDelete(item.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {item.type === 'highlight' ? (
+              <div className="bg-muted p-4 rounded-md">
+                <Quote className="h-4 w-4 mb-2 text-muted-foreground" />
+                <p className="italic text-muted-foreground">
+                  {item.highlighted_text}
+                </p>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                {item.summary || item.content || 'No content available'}
+              </p>
+            )}
+            <div className="mt-4 flex gap-2">
+              {item.tags.map((tag) => (
+                <Badge key={tag} variant="secondary">
+                  {tag}
+                </Badge>
+              ))}
             </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+
+  const renderListView = (items: SavedItem[]) => (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div 
+          key={item.id} 
+          className="flex items-start gap-4 p-4 bg-card rounded-lg hover:shadow-md transition-shadow group"
+        >
+          {/* Image thumbnail */}
+          {item.image_url ? (
+            <div className="w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+              <img
+                src={item.image_url}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-16 h-16 flex-shrink-0 rounded-md bg-muted flex items-center justify-center">
+              {item.type === 'highlight' ? (
+                <Quote className="h-6 w-6 text-muted-foreground" />
+              ) : (
+                <LayoutGrid className="h-6 w-6 text-muted-foreground" />
+              )}
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Title and Delete button */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <h3 className="font-semibold line-clamp-1">
+                  <a 
+                    href={item.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="hover:underline"
+                  >
+                    {item.title}
+                  </a>
+                </h3>
+                {item.url && (
+                  <a 
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:underline line-clamp-1"
+                  >
+                    {new URL(item.url).hostname}
+                  </a>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="opacity-0 group-hover:opacity-100 flex-shrink-0"
+                onClick={() => handleDelete(item.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Summary or Content */}
+            {(item.summary || item.content) && (
+              <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                {item.summary || item.content}
+              </p>
+            )}
+
+            {/* Tags */}
+            {item.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {item.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </header>
+      ))}
+    </div>
+  )
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {loading ? (
-          <div>Loading...</div>
-        ) : error ? (
-          <div className="text-red-500">{error}</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filterItems(savedItems).map((item) => (
-              <Card key={item.id} className="hover:bg-muted/50 transition-colors">
-                {item.image_url && item.type === 'link' && (
-                  <div className="relative w-full h-48 overflow-hidden bg-muted">
-                    <img
-                      src={item.image_url}
-                      alt={`Image for ${item.title}`}
-                      className="object-cover w-full h-full"
-                      onError={(e) => {
-                        console.error('Image failed to load:', item.image_url)
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                      }}
-                    />
-                  </div>
-                )}
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-base font-semibold">
-                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {item.title}
-                    </a>
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(item.id)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete</span>
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  {item.type === 'highlight' ? (
-                    <div className="bg-muted p-4 rounded-md">
-                      <Quote className="h-4 w-4 mb-2 text-muted-foreground" />
-                      <p className="italic text-muted-foreground">
-                        {item.highlighted_text}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      {item.summary || item.content || 'No content available'}
-                    </p>
-                  )}
-                  <div className="mt-4 flex gap-2">
-                    {item.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Top navigation row */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">StashIt</h1>
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>StashIt</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Item</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddItem} className="space-y-4">
+                <div>
+                  <Label htmlFor="title">Title</Label>
+                  <Input id="title" name="title" required />
+                </div>
+                <div>
+                  <Label htmlFor="url">URL</Label>
+                  <Input id="url" name="url" type="url" required />
+                </div>
+                <div>
+                  <Label htmlFor="content">Content</Label>
+                  <Textarea id="content" name="content" />
+                </div>
+                <div>
+                  <Label htmlFor="tags">Tags (comma-separated)</Label>
+                  <Input id="tags" name="tags" placeholder="tag1, tag2, tag3" />
+                </div>
+                <Button type="submit">Save</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2">
+                <span className="hidden sm:inline-block">
+                  {user?.email}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Second row with search and layout toggle */}
+      <div className="flex items-center justify-between gap-4 pb-4 border-b">
+        <div className="flex-1 max-w-2xl">
+          <input
+            type="search"
+            placeholder="Search stashed items..."
+            className="w-full px-4 py-2 rounded-md border bg-background"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center bg-muted rounded-lg p-1">
+            <Button
+              variant={layout === 'card' ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={() => setLayout('card')}
+              className="h-8 w-8"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={layout === 'list' ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={() => setLayout('list')}
+              className="h-8 w-8"
+            >
+              <List className="h-4 w-4" />
+            </Button>
           </div>
-        )}
-      </main>
+        </div>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div>Error: {error}</div>
+      ) : (
+        layout === 'card' 
+          ? renderCardView(filterItems(savedItems))
+          : renderListView(filterItems(savedItems))
+      )}
     </div>
   )
 }
