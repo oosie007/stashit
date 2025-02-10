@@ -2,18 +2,20 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import * as cheerio from 'cheerio';
 import { sanitizeHtml } from '@/lib/utils';
-import { headers } from 'next/headers'
+import { headers } from 'next/headers';
+import type { ReadonlyHeaders } from 'next/headers';
 
 // Helper function to get base URL
-function getBaseUrl(headers: Headers) {
+function getBaseUrl(headersList: ReadonlyHeaders) {
   try {
-    const protocol = headers.get('x-forwarded-proto') || 'http';
-    const host = headers.get('host') || '';
+    // Convert ReadonlyHeaders to regular Headers
+    const protocol = headersList.get('x-forwarded-proto') || 'http';
+    const host = headersList.get('host') || '';
     return `${protocol}://${host}`;
   } catch (error) {
     console.error('Error getting base URL:', error);
     // Fallback to relative URL which will work in both dev and prod
-    return '';
+    return '/api/scrape';
   }
 }
 
@@ -86,11 +88,12 @@ export async function POST(req: Request) {
       // Get headers safely
       const headersList = headers();
       const baseUrl = getBaseUrl(headersList);
+      const scrapeUrl = baseUrl === '/api/scrape' ? baseUrl : `${baseUrl}/api/scrape`;
       
-      console.log('🔄 Calling scrape endpoint:', `${baseUrl}/api/scrape`);
+      console.log('🔄 Calling scrape endpoint:', scrapeUrl);
 
       // Trigger scraping
-      const scrapeResponse = await fetch(`${baseUrl}/api/scrape`, {
+      const scrapeResponse = await fetch(scrapeUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: data.url })
