@@ -122,8 +122,11 @@ export async function POST(req: Request) {
     console.log('✅ Initial save successful:', insertedData);
 
     try {
-      // Use relative URL for API call
-      const scrapeUrl = '/api/scrape';
+      // Use full URL for API call
+      const scrapeUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') 
+        ? 'http://localhost:3000/api/scrape'
+        : 'https://stashit-nine.vercel.app/api/scrape';
+      
       console.log('🔄 Calling scrape endpoint:', scrapeUrl);
 
       // Trigger scraping

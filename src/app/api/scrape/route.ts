@@ -1,73 +1,63 @@
 import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
 import * as cheerio from 'cheerio'
 import { sanitizeHtml } from '@/lib/utils'
 
 export async function POST(req: Request) {
   try {
+    console.log('🔄 Scrape request received')
     const { url } = await req.json()
-    console.log('🔍 Starting scrape for URL:', url)
-
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch URL: ${response.status}`)
+    
+    if (!url) {
+      console.error('❌ No URL provided for scraping')
+      return NextResponse.json({ error: 'URL is required' }, { status: 400 })
     }
+
+    console.log('🌐 Attempting to scrape URL:', url)
     
-    const html = await response.text()
-    const $ = cheerio.load(html)
-
-    // Remove unwanted elements
-    $('script').remove()
-    $('iframe').remove()
-    $('style').remove()
-    $('noscript').remove()
-    $('meta').remove()
-    $('link').remove()
-
-    // Try to get the main content
-    let mainContent = ''
-    
-    // Common content selectors
-    const contentSelectors = [
-      'article',
-      '[role="main"]',
-      '.main-content',
-      '#main-content',
-      '.post-content',
-      '.article-content',
-      '.entry-content',
-      '.content',
-      'main',
-    ]
-
-    // Try each selector until we find content
-    for (const selector of contentSelectors) {
-      const element = $(selector)
-      if (element.length > 0) {
-        mainContent = element.html() || ''
-        break
+    try {
+      const response = await fetch(url)
+      if (!response.ok) {
+        console.error('❌ Failed to fetch URL:', response.status, response.statusText)
+        throw new Error(`Failed to fetch URL: ${response.status}`)
       }
+      
+      const html = await response.text()
+      console.log('📥 Received HTML content length:', html.length)
+      
+      const $ = cheerio.load(html)
+
+      // Remove scripts and other potentially harmful elements
+      $('script').remove()
+      $('iframe').remove()
+      $('style').remove()
+      $('noscript').remove()
+
+      // Get metadata
+      const description = $('meta[name="description"]').attr('content')
+      const image = $('meta[property="og:image"]').attr('content')
+      const favicon = $('link[rel="icon"]').attr('href')
+
+      // Then remove meta and link tags
+      $('meta').remove()
+      $('link').remove()
+
+      const content = sanitizeHtml($('body').html() || '')
+      console.log('✅ Successfully scraped content, length:', content.length)
+
+      return NextResponse.json({
+        title: $('title').text(),
+        content,
+        description,
+        image,
+        favicon,
+      })
+    } catch (error) {
+      console.error('❌ Error during scraping:', error)
+      return NextResponse.json({ error: 'Failed to scrape URL' }, { status: 500 })
     }
-
-    // If no content found with selectors, get the body
-    if (!mainContent) {
-      mainContent = $('body').html() || ''
-    }
-
-    // Clean up the content
-    const cleanContent = sanitizeHtml(mainContent)
-
-    console.log('✅ Scraping completed successfully')
-    
-    return NextResponse.json({
-      content: cleanContent,
-      success: true
-    })
-
   } catch (error) {
-    console.error('❌ Scraping error:', error)
-    return NextResponse.json(
-      { error: 'Failed to scrape content' },
-      { status: 500 }
-    )
+    console.error('❌ Error processing scrape request:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 
