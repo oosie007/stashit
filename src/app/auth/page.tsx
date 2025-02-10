@@ -2,12 +2,13 @@
 
 import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, redirect } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { createClient } from '@/lib/supabase/client'
 
 function AuthContent() {
   const router = useRouter()
@@ -113,10 +114,28 @@ function AuthContent() {
   )
 }
 
-export default function AuthPage() {
+export default async function AuthPage() {
+  const supabase = createClient()
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (session) {
+    redirect('/dashboard')
+  }
+
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AuthContent />
-    </Suspense>
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <div className="w-full max-w-md space-y-8 p-8">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold">Welcome to StashIt</h2>
+          <p className="mt-2 text-gray-600">Please sign in to continue</p>
+        </div>
+        <form className="mt-8 space-y-6">
+          <AuthContent />
+        </form>
+      </div>
+    </div>
   )
 } 
