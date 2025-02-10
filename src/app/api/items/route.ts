@@ -2,21 +2,6 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import * as cheerio from 'cheerio';
 import { sanitizeHtml } from '@/lib/utils';
-import { headers } from 'next/headers';
-
-// Helper function to get base URL
-function getBaseUrl() {
-  try {
-    const headersList = headers();
-    const protocol = headersList.get('x-forwarded-proto') || 'http';
-    const host = headersList.get('host') || '';
-    return `${protocol}://${host}`;
-  } catch (error) {
-    console.error('Error getting base URL:', error);
-    // Fallback to relative URL which will work in both dev and prod
-    return '/api/scrape';
-  }
-}
 
 // Helper function to add CORS headers
 function corsHeaders(response: NextResponse) {
@@ -84,10 +69,8 @@ export async function POST(req: Request) {
     console.log('💾 Initial save successful, triggering scraping');
 
     try {
-      // Get base URL for API call
-      const baseUrl = getBaseUrl();
-      const scrapeUrl = baseUrl === '/api/scrape' ? baseUrl : `${baseUrl}/api/scrape`;
-      
+      // Use relative URL for API call
+      const scrapeUrl = '/api/scrape';
       console.log('🔄 Calling scrape endpoint:', scrapeUrl);
 
       // Trigger scraping
