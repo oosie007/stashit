@@ -18,6 +18,9 @@ import {
   Heart,
   Menu,
   Lock,
+  X,
+  PenLine,
+  ExternalLink,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import {
@@ -46,6 +49,13 @@ import {
 } from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
 import { User as SupabaseUser } from '@supabase/supabase-js'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface SavedItem {
   id: number
@@ -60,6 +70,9 @@ interface SavedItem {
   created_at: string
   user_id: string
   is_loved: boolean
+  notes?: string
+  scraped_content?: string
+  scraped_at?: string
 }
 
 interface AppProps {
@@ -96,6 +109,11 @@ export const App = ({ userId }: AppProps) => {
   const [layout, setLayout] = useState<LayoutType>('card')
   const [category, setCategory] = useState<CategoryType>('all')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<SavedItem | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [noteContent, setNoteContent] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [scrapedContent, setScrapedContent] = useState<string | null>(null)
 
   useEffect(() => {
     fetchStashedItems()
@@ -245,45 +263,48 @@ export const App = ({ userId }: AppProps) => {
   const handleAddItem = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
+    const url = formData.get('url') as string
     
     try {
       console.log('Adding new item...')
+      
+      // First, scrape the URL
+      const scrapeResponse = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      })
+      
+      if (!scrapeResponse.ok) {
+        throw new Error('Failed to scrape URL')
+      }
+      
+      const scrapedData = await scrapeResponse.json()
       const tags = formData.get('tags') as string
       const processedTags = tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : []
 
       const newItem = {
         type: 'link',
-        title: formData.get('title') as string,
-        url: formData.get('url') as string,
+        title: formData.get('title') as string || scrapedData.title,
+        url: url,
         content: formData.get('content') as string,
         tags: processedTags,
         user_id: userId,
-        is_loved: false
+        is_loved: false,
+        scraped_content: scrapedData.content,
+        scraped_at: new Date().toISOString(),
+        image_url: scrapedData.image,
       }
-
-      console.log('New item data:', newItem)
 
       const { error: insertError } = await supabase
         .from('stashed_items')
         .insert([newItem])
 
-      if (insertError) {
-        console.error('Error inserting new item:', {
-          error: insertError,
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint
-        })
-        throw insertError
-      }
+      if (insertError) throw insertError
 
-      console.log('Successfully added new item')
       setOpen(false)
     } catch (err) {
-      console.error('Exception in handleAddItem:', {
-        error: err,
-        stack: err instanceof Error ? err.stack : undefined
-      })
+      console.error('Error adding item:', err)
       setError('Failed to add item')
     }
   }
@@ -357,10 +378,220 @@ export const App = ({ userId }: AppProps) => {
     </nav>
   )
 
+  const handleSaveNote = async () => {
+    if (!selectedItem) return
+
+    try {
+      const { error } = await supabase
+        .from('stashed_items')
+        .update({ notes: noteContent })
+        .eq('id', selectedItem.id)
+
+      if (error) throw error
+
+      setSavedItems(items =>
+        items.map(item =>
+          item.id === selectedItem.id
+            ? { ...item, notes: noteContent }
+            : item
+        )
+      )
+    } catch (err) {
+      console.error('Error saving note:', err)
+      setError('Failed to save note')
+    }
+  }
+
+  const PreviewPane = () => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [scrapedContent, setScrapedContent] = useState<string | null>(null);
+
+    useEffect(() => {
+      let mounted = true;
+      let timeoutId: NodeJS.Timeout;
+
+      const checkForScrapedContent = async () => {
+        if (!selectedItem?.url) return;
+
+        try {
+          const { data, error } = await supabase
+            .from('stashed_items')
+            .select('scraped_content, scraped_at')
+            .eq('url', selectedItem.url)
+            .single();
+
+          if (!mounted) return;
+
+          if (error) {
+            console.error('Error checking scraped content:', error);
+            setError('Failed to load scraped content');
+            setIsLoading(false);
+            return;
+          }
+
+          if (data?.scraped_content) {
+            setScrapedContent(data.scraped_content);
+            setIsLoading(false);
+          } else {
+            // Check again in 2 seconds
+            timeoutId = setTimeout(checkForScrapedContent, 2000);
+          }
+        } catch (err) {
+          if (!mounted) return;
+          console.error('Error checking scraped content:', err);
+          setError('Failed to load scraped content');
+          setIsLoading(false);
+        }
+      };
+
+      setIsLoading(true);
+      setError(null);
+      setScrapedContent(null);
+      checkForScrapedContent();
+
+      return () => {
+        mounted = false;
+        if (timeoutId) clearTimeout(timeoutId);
+      };
+    }, [selectedItem?.url]);
+
+    if (!selectedItem) return null;
+
+    return (
+      <div className="w-[800px] border-l bg-card flex flex-col h-screen fixed right-0 top-0">
+        <div className="p-4 border-b flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+          <div className="flex items-center gap-2">
+            <a 
+              href={selectedItem.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm hover:underline flex items-center gap-1"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View Original
+            </a>
+            {selectedItem.scraped_at && (
+              <span className="text-sm text-muted-foreground">
+                Saved {new Date(selectedItem.scraped_at).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setIsPreviewOpen(false);
+              setSelectedItem(null);
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Tabs defaultValue="preview" className="flex-1 flex flex-col">
+          <div className="border-b px-4 sticky top-[57px] bg-background z-10">
+            <TabsList>
+              <TabsTrigger value="preview">Preview</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+            </TabsList>
+          </div>
+
+          <div className="flex-1 relative">
+            <TabsContent 
+              value="preview" 
+              className="absolute inset-0 data-[state=active]:block data-[state=inactive]:hidden"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-3 text-sm text-muted-foreground">Loading preview...</span>
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center h-full text-destructive">
+                  {error}
+                </div>
+              ) : scrapedContent ? (
+                <div className="h-full overflow-auto">
+                  <article 
+                    className="prose dark:prose-invert max-w-2xl mx-auto p-6"
+                    dangerouslySetInnerHTML={{ __html: scrapedContent }}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <p>No preview available yet</p>
+                  <p className="text-sm mt-2">The content is being processed...</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent 
+              value="notes" 
+              className="absolute inset-0 data-[state=active]:block data-[state=inactive]:hidden overflow-auto"
+            >
+              <ScrollArea className="h-full">
+                <div className="p-4 space-y-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <h2 className="text-xl font-semibold">{selectedItem.title}</h2>
+                      {selectedItem.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedItem.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedItem.type === 'highlight' && (
+                      <div className="bg-muted p-4 rounded-md">
+                        <QuoteIcon />
+                        <p className="italic text-muted-foreground">
+                          {selectedItem.highlighted_text}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Notes</Label>
+                      <Textarea
+                        value={noteContent}
+                        onChange={(e) => setNoteContent(e.target.value)}
+                        placeholder="Add your notes here..."
+                        className="min-h-[200px]"
+                      />
+                      <Button 
+                        onClick={handleSaveNote}
+                        className="w-full"
+                      >
+                        Save Notes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </div>
+    )
+  }
+
   const renderCardView = (items: SavedItem[]) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {items.map((item) => (
-        <Card key={item.id} className="relative group overflow-hidden flex flex-col">
+        <Card 
+          key={item.id} 
+          className="relative group overflow-hidden flex flex-col cursor-pointer"
+          onClick={() => {
+            setSelectedItem(item)
+            setNoteContent(item.notes || '')
+            setIsPreviewOpen(true)
+          }}
+        >
           {item.image_url && item.type === 'link' && (
             <div className="relative w-full h-48">
               <img
@@ -400,7 +631,10 @@ export const App = ({ userId }: AppProps) => {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 p-0"
-                  onClick={() => handleToggleLove(item.id, item.is_loved)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleLove(item.id, item.is_loved)
+                  }}
                 >
                   <Heart 
                     className={`h-4 w-4 transition-all duration-300 ease-in-out transform hover:scale-110 ${
@@ -415,7 +649,10 @@ export const App = ({ userId }: AppProps) => {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 p-0"
-                  onClick={() => handleDelete(item.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(item.id)
+                  }}
                 >
                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
                   <span className="sr-only">Delete</span>
@@ -458,7 +695,6 @@ export const App = ({ userId }: AppProps) => {
           key={item.id} 
           className="flex items-start gap-4 p-4 bg-card rounded-lg hover:shadow-md transition-shadow group"
         >
-          {/* Image thumbnail */}
           {item.image_url ? (
             <div className="w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-muted">
               <img
@@ -481,9 +717,7 @@ export const App = ({ userId }: AppProps) => {
             </div>
           )}
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Title and Delete button */}
             <div className="flex items-start justify-between gap-2">
               <div className="space-y-1">
                 <h3 className="font-semibold line-clamp-1">
@@ -512,7 +746,10 @@ export const App = ({ userId }: AppProps) => {
                   variant="ghost"
                   size="icon"
                   className="opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity"
-                  onClick={() => handleToggleLove(item.id, item.is_loved)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleLove(item.id, item.is_loved)
+                  }}
                 >
                   <Heart 
                     className={`h-4 w-4 transition-all duration-300 ease-in-out transform hover:scale-110 ${
@@ -526,21 +763,22 @@ export const App = ({ userId }: AppProps) => {
                   variant="ghost"
                   size="icon"
                   className="opacity-0 group-hover:opacity-100 flex-shrink-0"
-                  onClick={() => handleDelete(item.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDelete(item.id)
+                  }}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            {/* Summary or Content */}
             {(item.summary || item.content) && (
               <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                 {item.summary || item.content}
               </p>
             )}
 
-            {/* Tags */}
             {item.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {item.tags.map((tag, index) => (
@@ -556,11 +794,36 @@ export const App = ({ userId }: AppProps) => {
     </div>
   )
 
+  const handleRescrape = async (itemId: number, url: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('stashed_items')
+        .update({
+          needs_scraping: true
+        })
+        .eq('id', itemId);
+
+      if (updateError) throw updateError;
+
+      // Trigger immediate scrape
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      if (!response.ok) throw new Error('Failed to scrape');
+
+      // Refresh the items
+      await fetchStashedItems();
+    } catch (error) {
+      console.error('Error rescraping:', error);
+    }
+  };
+
   return (
     <div className="flex h-screen">
-      {/* Desktop Sidebar - hidden on mobile */}
       <div className="hidden md:flex w-64 bg-card border-r flex-col">
-        {/* User section */}
         <div className="p-4 border-b">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -580,17 +843,14 @@ export const App = ({ userId }: AppProps) => {
           </DropdownMenu>
         </div>
 
-        {/* Desktop Menu items */}
         <div className="flex-1 p-4">
           <MenuContent />
         </div>
       </div>
 
-      {/* Mobile Menu Sheet */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-[80%] sm:w-[350px] p-0">
           <div className="flex flex-col h-full">
-            {/* User section in mobile menu */}
             <div className="p-4 border-b">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -609,7 +869,6 @@ export const App = ({ userId }: AppProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            {/* Mobile Menu items */}
             <div className="flex-1 p-4">
               <MenuContent />
             </div>
@@ -617,13 +876,12 @@ export const App = ({ userId }: AppProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-200 ${
+        isPreviewOpen ? 'mr-[800px]' : ''
+      }`}>
         <div className="container p-4 md:p-6 space-y-6 h-full flex flex-col">
-          {/* Top navigation row */}
           <div className="flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-4">
-              {/* Mobile menu button */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -668,7 +926,6 @@ export const App = ({ userId }: AppProps) => {
             </div>
           </div>
 
-          {/* Search and layout toggle */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b flex-shrink-0">
             <div className="w-full md:flex-1 md:max-w-2xl">
               <input
@@ -701,7 +958,6 @@ export const App = ({ userId }: AppProps) => {
             </div>
           </div>
 
-          {/* Content area with overflow */}
           <div className="flex-1 overflow-y-auto min-h-0">
             {loading ? (
               <div>Loading...</div>
@@ -715,6 +971,8 @@ export const App = ({ userId }: AppProps) => {
           </div>
         </div>
       </div>
+
+      {isPreviewOpen && <PreviewPane />}
     </div>
   )
 }
