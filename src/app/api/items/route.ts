@@ -71,6 +71,11 @@ async function scrapeUrl(url: string) {
 
 export async function POST(req: Request) {
   try {
+    // Verify Supabase environment
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Missing required environment variables for Supabase');
+    }
+
     // Log the raw request
     console.log('Raw request headers:', Object.fromEntries(req.headers.entries()));
     
