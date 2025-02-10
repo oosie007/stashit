@@ -1,62 +1,41 @@
 'use client'
 
-import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams, redirect } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createClient } from '@/lib/supabase/client'
 
-function AuthContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const router = useRouter()
+  const supabase = createClient()
 
-  useEffect(() => {
-    // Set initial mode from URL parameter
-    const urlMode = searchParams?.get('mode')
-    if (urlMode === 'login' || urlMode === 'register') {
-      setMode(urlMode)
-    }
-  }, [searchParams])
-
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
-        if (error) throw error
-        setError('Please check your email for confirmation link')
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (error) throw error
-        
-        console.log('Login successful:', data.user)
-        
-        if (data.user) {
-          // Force a hard navigation
-          window.location.href = '/dashboard'
-        }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) throw error
+
+      if (data.session) {
+        router.push('/dashboard')
+        router.refresh()
       }
     } catch (err) {
-      console.error('Auth error:', err)
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      console.error('Login error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
       setIsLoading(false)
     }
@@ -66,10 +45,10 @@ function AuthContent() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{mode === 'login' ? 'Login' : 'Register'}</CardTitle>
+          <CardTitle>Login</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -92,50 +71,11 @@ function AuthContent() {
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Loading...' : mode === 'login' ? 'Login' : 'Register'}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => {
-                const newMode = mode === 'login' ? 'register' : 'login'
-                setMode(newMode)
-                // Update URL without refreshing the page
-                router.push(`/auth?mode=${newMode}`)
-              }}
-            >
-              {mode === 'login' ? 'Need an account? Register' : 'Have an account? Login'}
+              {isLoading ? 'Loading...' : 'Login'}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </div>
-  )
-}
-
-export default async function AuthPage() {
-  const supabase = createClient()
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (session) {
-    redirect('/dashboard')
-  }
-
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full max-w-md space-y-8 p-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold">Welcome to StashIt</h2>
-          <p className="mt-2 text-gray-600">Please sign in to continue</p>
-        </div>
-        <form className="mt-8 space-y-6">
-          <AuthContent />
-        </form>
-      </div>
     </div>
   )
 } 
