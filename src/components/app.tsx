@@ -56,7 +56,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ModeToggle } from './mode-toggle'
+import { ModeToggle } from '@/components/mode-toggle'
 
 interface StashedItem {
   id: string
