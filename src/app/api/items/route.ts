@@ -71,9 +71,9 @@ async function scrapeUrl(url: string) {
 
 export async function POST(req: Request) {
   try {
-    // Verify Supabase environment
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Missing required environment variables for Supabase');
+    // Verify Supabase URL exists
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
     }
 
     // Log the raw request
