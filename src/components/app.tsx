@@ -68,7 +68,7 @@ interface StashedItem {
   highlighted_text?: string
   summary?: string
   user_id: string
-  is_favorite?: boolean
+  is_loved?: boolean
 }
 
 type LayoutType = 'card' | 'list'
@@ -91,13 +91,19 @@ export function App({ userId }: { userId: string }) {
 
   async function fetchItems() {
     try {
+      console.log('Fetching items for user:', userId)
       const { data, error } = await supabase
         .from('stashed_items')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching items:', error)
+        throw error
+      }
+
+      console.log('Fetched items:', data?.length || 0)
       setItems(data || [])
     } catch (err) {
       console.error('Error fetching items:', err)
@@ -116,28 +122,31 @@ export function App({ userId }: { userId: string }) {
       selectedCategory === 'all' ||
       (selectedCategory === 'articles' && item.type === 'link') ||
       (selectedCategory === 'highlights' && item.type === 'highlight') ||
-      (selectedCategory === 'loved' && item.is_favorite)
+      (selectedCategory === 'loved' && item.is_loved)
 
     return matchesSearch && matchesCategory
   })
 
   async function toggleFavorite(item: StashedItem) {
     try {
-      const newFavoriteStatus = !item.is_favorite
+      const newLovedStatus = !item.is_loved
+      
+      // First update the UI optimistically
+      setItems(items.map(i => 
+        i.id === item.id 
+          ? { ...i, is_loved: newLovedStatus }
+          : i
+      ))
+
+      // Then update the database
       const { error } = await supabase
         .from('stashed_items')
-        .update({ is_favorite: newFavoriteStatus })
+        .update({ is_loved: newLovedStatus })
         .eq('id', item.id)
 
       if (error) throw error
-
-      setItems(items.map(i => 
-        i.id === item.id 
-          ? { ...i, is_favorite: newFavoriteStatus }
-          : i
-      ))
     } catch (err) {
-      console.error('Error toggling favorite:', err)
+      console.error('Error toggling loved status:', err)
     }
   }
 
@@ -270,7 +279,7 @@ export function App({ userId }: { userId: string }) {
                 </div>
               ) : (
                 <div className={layout === 'card' 
-                  ? 'grid grid-cols-1 md:grid-cols-2 gap-4'
+                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                   : 'space-y-4'
                 }>
                   {filteredItems.map((item) => (
@@ -295,7 +304,7 @@ export function App({ userId }: { userId: string }) {
                             >
                               <Heart
                                 className={`h-4 w-4 ${
-                                  item.is_favorite ? 'fill-current text-red-500' : ''
+                                  item.is_loved ? 'fill-current text-red-500' : ''
                                 }`}
                               />
                             </Button>
