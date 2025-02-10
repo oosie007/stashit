@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import * as cheerio from 'cheerio';
 import { sanitizeHtml } from '@/lib/utils';
+import { PostgrestError } from '@supabase/supabase-js';
 
 // Helper function to add CORS headers
 function corsHeaders(response: NextResponse) {
@@ -9,6 +10,29 @@ function corsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   return response;
+}
+
+// Helper function to format error for response
+function formatError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      details: (error as any).details || null,
+      code: (error as any).code || null,
+    };
+  }
+  if (typeof error === 'object' && error !== null) {
+    return {
+      message: String((error as any).message || 'Unknown error'),
+      details: (error as any).details || null,
+      code: (error as any).code || null,
+    };
+  }
+  return {
+    message: String(error),
+    details: null,
+    code: null,
+  };
 }
 
 async function scrapeUrl(url: string) {
@@ -147,21 +171,14 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     console.error('❌ Error creating item:', error);
-    console.error('Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    });
+    const formattedError = formatError(error);
+    console.error('Error details:', formattedError);
 
     return corsHeaders(
       NextResponse.json(
         { 
-          error: error.message || 'Failed to create item',
-          details: error.details || null,
-          code: error.code || null
+          success: false,
+          ...formattedError
         },
         { status: 500 }
       )
