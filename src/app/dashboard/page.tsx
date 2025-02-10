@@ -1,27 +1,26 @@
-'use client'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
-import { App } from '@/components/app'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+export default async function DashboardPage() {
+  const supabase = createClient()
 
-export default function DashboardPage() {
-  const router = useRouter()
-  const [userId, setUserId] = useState<string | null>(null)
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth')
-      } else {
-        setUserId(user.id)
-      }
-    }
-    checkUser()
-  }, [router])
+  if (!session) {
+    redirect('/auth')
+  }
 
-  if (!userId) return null
-
-  return <App userId={userId} />
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <p>Welcome, {session.user.email}</p>
+      <form action="/auth/signout" method="post">
+        <button type="submit" className="text-red-500 hover:underline">
+          Sign Out
+        </button>
+      </form>
+    </div>
+  )
 } 

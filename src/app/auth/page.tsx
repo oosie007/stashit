@@ -16,6 +16,16 @@ export default function AuthPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+      }
+    }
+    checkSession()
+  }, [router, supabase.auth])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -29,9 +39,9 @@ export default function AuthPage() {
 
       if (error) throw error
 
-      if (data.session) {
-        router.push('/dashboard')
-        router.refresh()
+      if (data?.session) {
+        // Use window.location for a full page refresh
+        window.location.href = '/dashboard'
       }
     } catch (err) {
       console.error('Login error:', err)
