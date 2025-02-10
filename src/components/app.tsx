@@ -22,7 +22,7 @@ import {
   PenLine,
   ExternalLink,
 } from 'lucide-react'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { ModeToggle } from '@/components/mode-toggle'
 import {
   Dialog,
   DialogContent,
@@ -48,7 +48,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
-import { User as SupabaseUser } from '@supabase/supabase-js'
 import {
   Tabs,
   TabsContent,
@@ -56,7 +55,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ModeToggle } from '@/components/mode-toggle'
 
 interface StashedItem {
   id: string
@@ -70,138 +68,336 @@ interface StashedItem {
   highlighted_text?: string
   summary?: string
   user_id: string
+  is_favorite?: boolean
 }
 
-interface AppProps {
-  userId: string
-}
-
-// Add layout type
 type LayoutType = 'card' | 'list'
-
 type CategoryType = 'all' | 'articles' | 'highlights' | 'loved'
 
-const QuoteIcon = ({ className = "h-4 w-4 mb-2" }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    className={className}
-    fill="currentColor"
-  >
-    <path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
-    <path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
-  </svg>
-)
-
-export function App({ userId }: AppProps) {
+export function App({ userId }: { userId: string }) {
   const [items, setItems] = useState<StashedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [layout, setLayout] = useState<LayoutType>('card')
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [selectedItem, setSelectedItem] = useState<StashedItem | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
-    async function fetchItems() {
-      try {
-        console.log('Fetching items for user:', userId)
-        const { data, error } = await supabase
-          .from('stashed_items')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          throw error
-        }
-
-        console.log('Fetched items:', data)
-        setItems(data || [])
-      } catch (err) {
-        console.error('Error fetching items:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch items')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchItems()
-  }, [userId, supabase])
+  }, [userId])
 
-  if (loading) {
-    return <div>Loading your stashed items...</div>
+  async function fetchItems() {
+    try {
+      const { data, error } = await supabase
+        .from('stashed_items')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setItems(data || [])
+    } catch (err) {
+      console.error('Error fetching items:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch items')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (error) {
-    return <div>Error: {error}</div>
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesCategory = 
+      selectedCategory === 'all' ||
+      (selectedCategory === 'articles' && item.type === 'link') ||
+      (selectedCategory === 'highlights' && item.type === 'highlight') ||
+      (selectedCategory === 'loved' && item.is_favorite)
+
+    return matchesSearch && matchesCategory
+  })
+
+  async function toggleFavorite(item: StashedItem) {
+    try {
+      const newFavoriteStatus = !item.is_favorite
+      const { error } = await supabase
+        .from('stashed_items')
+        .update({ is_favorite: newFavoriteStatus })
+        .eq('id', item.id)
+
+      if (error) throw error
+
+      setItems(items.map(i => 
+        i.id === item.id 
+          ? { ...i, is_favorite: newFavoriteStatus }
+          : i
+      ))
+    } catch (err) {
+      console.error('Error toggling favorite:', err)
+    }
   }
+
+  async function deleteItem(id: string) {
+    try {
+      const { error } = await supabase
+        .from('stashed_items')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      setItems(items.filter(item => item.id !== id))
+      if (selectedItem?.id === id) {
+        setSelectedItem(null)
+      }
+    } catch (err) {
+      console.error('Error deleting item:', err)
+    }
+  }
+
+  if (loading) return <div>Loading your stashed items...</div>
+  if (error) return <div>Error: {error}</div>
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">StashIt</h1>
-        <div className="flex items-center gap-4">
-          <Input
-            type="search"
-            placeholder="Search stashed items..."
-            className="w-64"
-          />
-          <ModeToggle />
-          <form action="/auth/signout" method="post">
-            <Button variant="outline" type="submit">
-              Sign Out
+    <div className="flex h-screen">
+      {/* Sidebar */}
+      <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-background border-r`}>
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-2xl font-bold">StashIt</h1>
+            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)}>
+              <X className="h-4 w-4" />
             </Button>
-          </form>
+          </div>
+          <nav className="space-y-2">
+            <Button
+              variant={selectedCategory === 'all' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('all')}
+            >
+              <Bookmark className="mr-2 h-4 w-4" />
+              All Stashes
+            </Button>
+            <Button
+              variant={selectedCategory === 'articles' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('articles')}
+            >
+              <Newspaper className="mr-2 h-4 w-4" />
+              Stashed Articles
+            </Button>
+            <Button
+              variant={selectedCategory === 'highlights' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('highlights')}
+            >
+              <Quote className="mr-2 h-4 w-4" />
+              Stashed Highlights
+            </Button>
+            <Button
+              variant={selectedCategory === 'loved' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('loved')}
+            >
+              <Heart className="mr-2 h-4 w-4" />
+              Loved Stashes
+            </Button>
+          </nav>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.length === 0 ? (
-          <div className="col-span-full text-center py-10">
-            <p>No items stashed yet. Use the extension to start saving!</p>
-          </div>
-        ) : (
-          items.map((item) => (
-            <Card key={item.id} className="p-4">
-              {item.image_url && (
-                <img
-                  src={item.image_url}
-                  alt=""
-                  className="w-full h-40 object-cover rounded-md mb-4"
-                />
-              )}
-              <h2 className="text-xl font-semibold mb-2">{item.title}</h2>
-              {item.type === 'highlight' && item.highlighted_text && (
-                <blockquote className="border-l-4 border-primary pl-4 my-2 italic">
-                  {item.highlighted_text}
-                </blockquote>
-              )}
-              {item.summary && (
-                <p className="text-muted-foreground text-sm mb-4">
-                  {item.summary}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-1 bg-primary/10 rounded-full text-xs"
-                  >
-                    {tag}
-                  </span>
-                ))}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <header className="border-b p-4">
+          <div className="flex items-center justify-between">
+            {!isSidebarOpen && (
+              <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
+                <Menu className="h-4 w-4" />
+              </Button>
+            )}
+            <div className="flex-1 mx-4">
+              <Input
+                type="search"
+                placeholder="Search stashed items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex border rounded-lg">
+                <Button
+                  variant={layout === 'card' ? 'default' : 'ghost'}
+                  size="icon"
+                  onClick={() => setLayout('card')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={layout === 'list' ? 'default' : 'ghost'}
+                  size="icon"
+                  onClick={() => setLayout('list')}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
               </div>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:underline text-sm"
-              >
-                Visit Link →
-              </a>
-            </Card>
-          ))
-        )}
+              <ModeToggle />
+              <form action="/auth/signout" method="post">
+                <Button variant="outline" type="submit">
+                  Sign Out
+                </Button>
+              </form>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full flex">
+            {/* Items List */}
+            <div className={`${selectedItem ? 'w-1/2' : 'w-full'} overflow-y-auto p-4`}>
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground">
+                    {searchQuery
+                      ? 'No items match your search'
+                      : 'No items stashed yet. Use the extension to start saving!'}
+                  </p>
+                </div>
+              ) : (
+                <div className={layout === 'card' 
+                  ? 'grid grid-cols-1 md:grid-cols-2 gap-4'
+                  : 'space-y-4'
+                }>
+                  {filteredItems.map((item) => (
+                    <Card 
+                      key={item.id}
+                      className={`cursor-pointer hover:shadow-md transition-shadow ${
+                        selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
+                      }`}
+                      onClick={() => setSelectedItem(item)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h2 className="text-xl font-semibold">{item.title}</h2>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleFavorite(item)
+                              }}
+                            >
+                              <Heart
+                                className={`h-4 w-4 ${
+                                  item.is_favorite ? 'fill-current text-red-500' : ''
+                                }`}
+                              />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteItem(item.id)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        {item.image_url && layout === 'card' && (
+                          <img
+                            src={item.image_url}
+                            alt=""
+                            className="w-full h-40 object-cover rounded-md mb-4"
+                          />
+                        )}
+                        {item.type === 'highlight' && item.highlighted_text && (
+                          <blockquote className="border-l-4 border-primary pl-4 my-2 italic">
+                            {item.highlighted_text}
+                          </blockquote>
+                        )}
+                        {item.summary && (
+                          <p className="text-muted-foreground text-sm line-clamp-3">
+                            {item.summary}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          {item.tags?.map((tag) => (
+                            <Badge key={tag} variant="secondary">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Preview Pane */}
+            {selectedItem && (
+              <div className="w-1/2 border-l overflow-y-auto">
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-2xl font-bold">{selectedItem.title}</h2>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedItem(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {selectedItem.image_url && (
+                    <img
+                      src={selectedItem.image_url}
+                      alt=""
+                      className="w-full rounded-lg mb-4"
+                    />
+                  )}
+                  {selectedItem.type === 'highlight' && selectedItem.highlighted_text && (
+                    <blockquote className="border-l-4 border-primary pl-4 my-4 italic">
+                      {selectedItem.highlighted_text}
+                    </blockquote>
+                  )}
+                  {selectedItem.summary && (
+                    <p className="text-muted-foreground mb-4">
+                      {selectedItem.summary}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {selectedItem.tags?.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <a
+                      href={selectedItem.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline flex items-center gap-2"
+                    >
+                      Visit Original <ExternalLink className="h-4 w-4" />
+                    </a>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(selectedItem.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
