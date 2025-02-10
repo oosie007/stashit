@@ -45,6 +45,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
+import { User as SupabaseUser } from '@supabase/supabase-js'
 
 interface SavedItem {
   id: number
@@ -91,7 +92,7 @@ export const App = ({ userId }: AppProps) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<'all' | SavedItem['type']>('all')
   const [open, setOpen] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   const [layout, setLayout] = useState<LayoutType>('card')
   const [category, setCategory] = useState<CategoryType>('all')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -565,7 +566,7 @@ export const App = ({ userId }: AppProps) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="w-full justify-start gap-2">
                 <User className="h-4 w-4" />
-                <span className="truncate">{user?.email}</span>
+                <span className="truncate">{user?.user_metadata.email}</span>
                 <ChevronDown className="h-4 w-4 ml-auto opacity-50" />
               </Button>
             </DropdownMenuTrigger>
@@ -595,7 +596,7 @@ export const App = ({ userId }: AppProps) => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="w-full justify-start gap-2">
                     <User className="h-4 w-4" />
-                    <span className="truncate">{user?.email}</span>
+                    <span className="truncate">{user?.user_metadata.email}</span>
                     <ChevronDown className="h-4 w-4 ml-auto opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
