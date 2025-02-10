@@ -3,12 +3,11 @@ import { supabase } from '@/lib/supabase';
 import * as cheerio from 'cheerio';
 import { sanitizeHtml } from '@/lib/utils';
 import { headers } from 'next/headers';
-import type { ReadonlyHeaders } from 'next/headers';
 
 // Helper function to get base URL
-function getBaseUrl(headersList: ReadonlyHeaders) {
+function getBaseUrl() {
   try {
-    // Convert ReadonlyHeaders to regular Headers
+    const headersList = headers();
     const protocol = headersList.get('x-forwarded-proto') || 'http';
     const host = headersList.get('host') || '';
     return `${protocol}://${host}`;
@@ -85,9 +84,8 @@ export async function POST(req: Request) {
     console.log('💾 Initial save successful, triggering scraping');
 
     try {
-      // Get headers safely
-      const headersList = headers();
-      const baseUrl = getBaseUrl(headersList);
+      // Get base URL for API call
+      const baseUrl = getBaseUrl();
       const scrapeUrl = baseUrl === '/api/scrape' ? baseUrl : `${baseUrl}/api/scrape`;
       
       console.log('🔄 Calling scrape endpoint:', scrapeUrl);
