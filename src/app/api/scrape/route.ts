@@ -15,6 +15,14 @@ export async function POST(req: Request) {
     const html = await response.text()
     const $ = cheerio.load(html)
 
+    // Remove unwanted elements
+    $('script').remove()
+    $('iframe').remove()
+    $('style').remove()
+    $('noscript').remove()
+    $('meta').remove()
+    $('link').remove()
+
     // Try to get the main content
     let mainContent = ''
     
@@ -46,17 +54,7 @@ export async function POST(req: Request) {
     }
 
     // Clean up the content
-    const cleanContent = sanitizeHtml(mainContent, {
-      allowedTags: [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'ul', 'ol', 
-        'li', 'b', 'i', 'strong', 'em', 'blockquote', 'br', 'div',
-        'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img'
-      ],
-      allowedAttributes: {
-        'a': ['href', 'target', 'rel'],
-        'img': ['src', 'alt', 'title']
-      }
-    })
+    const cleanContent = sanitizeHtml(mainContent)
 
     console.log('✅ Scraping completed successfully')
     
