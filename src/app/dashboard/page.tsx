@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { App } from '@/components/app'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -12,15 +13,5 @@ export default async function DashboardPage() {
     redirect('/auth')
   }
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p>Welcome, {session.user.email}</p>
-      <form action="/auth/signout" method="post">
-        <button type="submit" className="text-red-500 hover:underline">
-          Sign Out
-        </button>
-      </form>
-    </div>
-  )
+  return <App userId={session.user.id} />
 } 
