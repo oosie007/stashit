@@ -4,6 +4,19 @@ import * as cheerio from 'cheerio';
 import { sanitizeHtml } from '@/lib/utils';
 import { headers } from 'next/headers'
 
+// Helper function to get base URL
+function getBaseUrl(headers: Headers) {
+  try {
+    const protocol = headers.get('x-forwarded-proto') || 'http';
+    const host = headers.get('host') || '';
+    return `${protocol}://${host}`;
+  } catch (error) {
+    console.error('Error getting base URL:', error);
+    // Fallback to relative URL which will work in both dev and prod
+    return '';
+  }
+}
+
 // Helper function to add CORS headers
 function corsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Origin', '*');
@@ -70,15 +83,14 @@ export async function POST(req: Request) {
     console.log('💾 Initial save successful, triggering scraping');
 
     try {
-      // Get the base URL for the API
-      const protocol = headers().get('x-forwarded-proto') || 'http';
-      const host = headers().get('host');
-      const apiBase = `${protocol}://${host}`;
-
-      console.log('🔄 Calling scrape endpoint:', `${apiBase}/api/scrape`);
+      // Get headers safely
+      const headersList = headers();
+      const baseUrl = getBaseUrl(headersList);
+      
+      console.log('🔄 Calling scrape endpoint:', `${baseUrl}/api/scrape`);
 
       // Trigger scraping
-      const scrapeResponse = await fetch(`${apiBase}/api/scrape`, {
+      const scrapeResponse = await fetch(`${baseUrl}/api/scrape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: data.url })
