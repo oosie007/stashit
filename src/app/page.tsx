@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
+import { Globe } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
@@ -44,9 +46,17 @@ export default function Home() {
           <div className="lg:hidden">
             <h1 className="text-2xl font-bold">StashIt</h1>
           </div>
-          <Button variant="outline" onClick={() => router.push('/auth?mode=login')}>
-            Login
-          </Button>
+          <div className="flex gap-4">
+            <Link href="/auth">
+              <Button>Sign In</Button>
+            </Link>
+            <Link href="/board">
+              <Button variant="outline">
+                <Globe className="mr-2 h-4 w-4" />
+                View Public Board
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="max-w-md mx-auto flex-1 flex flex-col justify-center space-y-6">
