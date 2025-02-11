@@ -78,6 +78,7 @@ type CategoryType = 'all' | 'articles' | 'highlights' | 'loved'
 
 export function App({ userId }: { userId: string }) {
   const [items, setItems] = useState<StashedItem[]>([])
+  const [filteredItems, setFilteredItems] = useState<StashedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [layout, setLayout] = useState<LayoutType>('card')
@@ -285,7 +286,7 @@ export function App({ userId }: { userId: string }) {
                     ? 'flex flex-col'
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 }>
-                  {filteredItems.map(item => 
+                  {(filteredItems || []).map((item: StashedItem) => 
                     selectedItem || layout === 'list' ? (
                       // List View Item
                       <div
