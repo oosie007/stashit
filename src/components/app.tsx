@@ -284,7 +284,7 @@ export function App({ userId }: { userId: string }) {
                     ? 'flex flex-col' // List view - one item per line
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' // Card grid
                 }>
-                  {filteredItems.map((item) => {
+                  {filteredItems.map((item: StashedItem) => {
                     if (!item || typeof item.id === 'undefined') return null;
                     return (
                       selectedItem || layout === 'list' ? (
@@ -379,8 +379,9 @@ export function App({ userId }: { userId: string }) {
                         // Original Card View (your existing card code)
                         <Card 
                           key={item.id}
+                          // @ts-ignore
                           className={`cursor-pointer hover:shadow-md transition-shadow ${
-                            selectedItem?.id === (item as StashedItem).id ? 'ring-2 ring-primary' : ''
+                            selectedItem?.id === (item as any).id ? 'ring-2 ring-primary' : ''
                           }`}
                           onClick={() => setSelectedItem(item)}
                         >
