@@ -281,11 +281,13 @@ export function App({ userId }: { userId: string }) {
               ) : (
                 <div className={
                   selectedItem || layout === 'list'
-                    ? 'flex flex-col' // List view - one item per line
-                    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' // Card grid
+                    ? 'flex flex-col'
+                    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 }>
-                  {(filteredItems as StashedItem[]).map((item: StashedItem) => (
-                    selectedItem || layout === 'list' ? (
+                  {filteredItems.map((item) => {
+                    if (!item?.id) return null; // Guard against invalid items
+                    
+                    return selectedItem || layout === 'list' ? (
                       // List View Item
                       <div
                         key={item.id}
@@ -374,7 +376,7 @@ export function App({ userId }: { userId: string }) {
                         </div>
                       </div>
                     ) : (
-                      // Original Card View (your existing card code)
+                      // Card View
                       <Card 
                         key={item.id}
                         className={`cursor-pointer hover:shadow-md transition-shadow ${
@@ -439,7 +441,7 @@ export function App({ userId }: { userId: string }) {
                         </CardContent>
                       </Card>
                     )
-                  ))}
+                  })}
                 </div>
               )}
             </div>
