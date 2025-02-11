@@ -130,6 +130,16 @@ export function App({ userId }: { userId: string }) {
     return matchesSearch && matchesCategory
   })
 
+  function isValidStashedItem(item: any): item is StashedItem {
+    return (
+      item &&
+      typeof item.id === 'string' &&
+      typeof item.title === 'string' &&
+      typeof item.url === 'string' &&
+      Array.isArray(item.tags)
+    );
+  }
+
   async function toggleFavorite(item: StashedItem) {
     try {
       const newLovedStatus = !item.is_loved
@@ -286,163 +296,164 @@ export function App({ userId }: { userId: string }) {
                     ? 'flex flex-col'
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 }>
-                  {filteredItems.map((item) => {
-                    const typedItem = { id: '', ...item } as { id: string } & typeof item;
-                    return (
-                      selectedItem || layout === 'list' ? (
-                        <div
-                          key={typedItem.id}
-                          className={`flex items-center gap-4 p-3 hover:bg-accent/50 transition-colors border-b last:border-b-0 ${
-                            selectedItem?.id === typedItem.id ? 'bg-accent' : ''
-                          }`}
-                          onClick={() => setSelectedItem(typedItem)}
-                        >
-                          {/* Left side - Icon or small image */}
-                          <div className="shrink-0">
-                            {typedItem.image_url ? (
-                              <img
-                                src={typedItem.image_url}
-                                alt=""
-                                className="w-10 h-10 rounded object-cover"
-                              />
-                            ) : (
-                              <Link2 className="w-5 h-5 text-muted-foreground" />
-                            )}
-                          </div>
-
-                          {/* Middle - Main content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium truncate">{typedItem.title}</h3>
-                              {typedItem.tags?.length > 0 && (
-                                <div className="flex gap-1">
-                                  {typedItem.tags.slice(0, 2).map((tag) => (
-                                    <Badge key={tag} variant="secondary" className="text-xs">
-                                      {tag}
-                                    </Badge>
-                                  ))}
-                                  {typedItem.tags.length > 2 && (
-                                    <span className="text-xs text-muted-foreground">
-                                      +{typedItem.tags.length - 2}
-                                    </span>
-                                  )}
-                                </div>
+                  {filteredItems
+                    .filter(isValidStashedItem)
+                    .map((item) => {
+                      return (
+                        selectedItem || layout === 'list' ? (
+                          <div
+                            key={item.id}
+                            className={`flex items-center gap-4 p-3 hover:bg-accent/50 transition-colors border-b last:border-b-0 ${
+                              selectedItem?.id === item.id ? 'bg-accent' : ''
+                            }`}
+                            onClick={() => setSelectedItem(item)}
+                          >
+                            {/* Left side - Icon or small image */}
+                            <div className="shrink-0">
+                              {item.image_url ? (
+                                <img
+                                  src={item.image_url}
+                                  alt=""
+                                  className="w-10 h-10 rounded object-cover"
+                                />
+                              ) : (
+                                <Link2 className="w-5 h-5 text-muted-foreground" />
                               )}
                             </div>
-                            
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <a 
-                                href={typedItem.url}
-                                className="truncate hover:underline"
-                                onClick={e => e.stopPropagation()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {typedItem.url}
-                              </a>
-                              {typedItem.type === 'highlight' && (
-                                <Badge variant="outline" className="text-xs">Highlight</Badge>
-                              )}
-                            </div>
-                          </div>
 
-                          {/* Right side - Actions */}
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleFavorite(typedItem)
-                              }}
-                            >
-                              <Heart
-                                className={`h-4 w-4 ${
-                                  typedItem.is_loved ? 'fill-current text-red-500' : ''
-                                }`}
-                              />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deleteItem(typedItem.id)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Card 
-                          key={typedItem.id}
-                          className={`cursor-pointer hover:shadow-md transition-shadow ${
-                            selectedItem?.id === typedItem.id ? 'ring-2 ring-primary' : ''
-                          }`}
-                          onClick={() => setSelectedItem(typedItem)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h2 className="text-xl font-semibold">{typedItem.title}</h2>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    toggleFavorite(typedItem)
-                                  }}
+                            {/* Middle - Main content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-medium truncate">{item.title}</h3>
+                                {item.tags?.length > 0 && (
+                                  <div className="flex gap-1">
+                                    {item.tags.slice(0, 2).map((tag) => (
+                                      <Badge key={tag} variant="secondary" className="text-xs">
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                    {item.tags.length > 2 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        +{item.tags.length - 2}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <a 
+                                  href={item.url}
+                                  className="truncate hover:underline"
+                                  onClick={e => e.stopPropagation()}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                 >
-                                  <Heart
-                                    className={`h-4 w-4 ${
-                                      typedItem.is_loved ? 'fill-current text-red-500' : ''
-                                    }`}
-                                  />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    deleteItem(typedItem.id)
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                  {item.url}
+                                </a>
+                                {item.type === 'highlight' && (
+                                  <Badge variant="outline" className="text-xs">Highlight</Badge>
+                                )}
                               </div>
                             </div>
-                            {typedItem.image_url && layout === 'card' && (
-                              <img
-                                src={typedItem.image_url}
-                                alt=""
-                                className="w-full h-40 object-cover rounded-md mb-4"
-                              />
-                            )}
-                            {typedItem.type === 'highlight' && typedItem.highlighted_text && (
-                              <blockquote className="border-l-4 border-primary pl-4 my-2 italic">
-                                {typedItem.highlighted_text}
-                              </blockquote>
-                            )}
-                            {typedItem.summary && (
-                              <p className="text-muted-foreground text-sm line-clamp-3">
-                                {typedItem.summary}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap gap-2 mt-4">
-                              {typedItem.tags?.map((tag) => (
-                                <Badge key={tag} variant="secondary">
-                                  {tag}
-                                </Badge>
-                              ))}
+
+                            {/* Right side - Actions */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleFavorite(item)
+                                }}
+                              >
+                                <Heart
+                                  className={`h-4 w-4 ${
+                                    item.is_loved ? 'fill-current text-red-500' : ''
+                                  }`}
+                                />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteItem(item.id)
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    );
-                  })}
+                          </div>
+                        ) : (
+                          <Card 
+                            key={item.id}
+                            className={`cursor-pointer hover:shadow-md transition-shadow ${
+                              selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
+                            }`}
+                            onClick={() => setSelectedItem(item)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-start mb-2">
+                                <h2 className="text-xl font-semibold">{item.title}</h2>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      toggleFavorite(item)
+                                    }}
+                                  >
+                                    <Heart
+                                      className={`h-4 w-4 ${
+                                        item.is_loved ? 'fill-current text-red-500' : ''
+                                      }`}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      deleteItem(item.id)
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              {item.image_url && layout === 'card' && (
+                                <img
+                                  src={item.image_url}
+                                  alt=""
+                                  className="w-full h-40 object-cover rounded-md mb-4"
+                                />
+                              )}
+                              {item.type === 'highlight' && item.highlighted_text && (
+                                <blockquote className="border-l-4 border-primary pl-4 my-2 italic">
+                                  {item.highlighted_text}
+                                </blockquote>
+                              )}
+                              {item.summary && (
+                                <p className="text-muted-foreground text-sm line-clamp-3">
+                                  {item.summary}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-2 mt-4">
+                                {item.tags?.map((tag) => (
+                                  <Badge key={tag} variant="secondary">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      );
+                    })}
                 </div>
               )}
             </div>
