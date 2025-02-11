@@ -114,7 +114,7 @@ export function App({ userId }: { userId: string }) {
     }
   }
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = items.filter((item: StashedItem) => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -284,7 +284,7 @@ export function App({ userId }: { userId: string }) {
                     ? 'flex flex-col' // List view - one item per line
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' // Card grid
                 }>
-                  {(filteredItems as StashedItem[]).map((item: StashedItem) => (
+                  {filteredItems.map((item: StashedItem) => (
                     selectedItem || layout === 'list' ? (
                       // List View Item
                       <div
