@@ -105,7 +105,7 @@ export function App({ userId }: { userId: string }) {
       }
 
       console.log('Fetched items:', data?.length || 0)
-      setItems(data || [])
+      setItems(data as unknown as StashedItem[])
     } catch (err) {
       console.error('Error fetching items:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch items')
@@ -114,7 +114,7 @@ export function App({ userId }: { userId: string }) {
     }
   }
 
-  const filteredItems: StashedItem[] = items.filter((item: StashedItem) => {
+  const filteredItems = items.filter((item): item is StashedItem => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -281,11 +281,10 @@ export function App({ userId }: { userId: string }) {
               ) : (
                 <div className={
                   selectedItem || layout === 'list'
-                    ? 'flex flex-col' // List view - one item per line
-                    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' // Card grid
+                    ? 'flex flex-col'
+                    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 }>
-                  {filteredItems.map((item: StashedItem) => {
-                    if (!item || typeof item.id === 'undefined') return null;
+                  {filteredItems.map((item: { id: string } & Partial<StashedItem>) => {
                     return (
                       selectedItem || layout === 'list' ? (
                         // List View Item
@@ -353,7 +352,7 @@ export function App({ userId }: { userId: string }) {
                               className="h-8 w-8"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                toggleFavorite(item)
+                                toggleFavorite(item as StashedItem)
                               }}
                             >
                               <Heart
@@ -380,7 +379,7 @@ export function App({ userId }: { userId: string }) {
                         <Card 
                           key={item.id}
                           className={`cursor-pointer hover:shadow-md transition-shadow ${
-                            selectedItem?.id === (item as StashedItem).id ? 'ring-2 ring-primary' : ''
+                            selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
                           }`}
                           onClick={() => setSelectedItem(item as StashedItem)}
                         >
@@ -393,7 +392,7 @@ export function App({ userId }: { userId: string }) {
                                   size="icon"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    toggleFavorite(item)
+                                    toggleFavorite(item as StashedItem)
                                   }}
                                 >
                                   <Heart
