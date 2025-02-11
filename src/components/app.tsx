@@ -76,7 +76,7 @@ type LayoutType = 'card' | 'list'
 type CategoryType = 'all' | 'articles' | 'highlights' | 'loved'
 
 export function App({ userId }: { userId: string }) {
-  const [items, setItems] = useState<any[]>([])  // temporarily use any to bypass type checking
+  const [items, setItems] = useState<StashedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [layout, setLayout] = useState<LayoutType>('card')
@@ -99,10 +99,7 @@ export function App({ userId }: { userId: string }) {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching items:', error)
-        throw error
-      }
+      if (error) throw error
 
       console.log('Fetched items:', data?.length || 0)
       setItems(data || [])
@@ -114,31 +111,19 @@ export function App({ userId }: { userId: string }) {
     }
   }
 
-  const filteredItems = items.filter((item): item is StashedItem => {
-    if (!item?.id) return false;
-    
-    const matchesSearch = item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase()) || false
+      item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesCategory = 
       selectedCategory === 'all' ||
       (selectedCategory === 'articles' && item.type === 'link') ||
       (selectedCategory === 'highlights' && item.type === 'highlight') ||
-      (selectedCategory === 'loved' && Boolean(item.is_loved))
+      (selectedCategory === 'loved' && item.is_loved)
 
     return matchesSearch && matchesCategory
   })
-
-  function isValidStashedItem(item: any): item is StashedItem {
-    return (
-      item &&
-      typeof item.id === 'string' &&
-      typeof item.title === 'string' &&
-      typeof item.url === 'string' &&
-      Array.isArray(item.tags)
-    );
-  }
 
   async function toggleFavorite(item: StashedItem) {
     try {
@@ -297,7 +282,6 @@ export function App({ userId }: { userId: string }) {
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 }>
                   {filteredItems
-                    .filter(isValidStashedItem)
                     .map((item) => {
                       return (
                         selectedItem || layout === 'list' ? (
