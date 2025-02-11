@@ -284,8 +284,8 @@ export function App({ userId }: { userId: string }) {
                     ? 'flex flex-col'
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 }>
-                  {filteredItems.map((item) => {
-                    if (!item?.id) return null; // Guard against invalid items
+                  {filteredItems.map((item: StashedItem) => {
+                    if (!item?.id) return null;
                     
                     return selectedItem || layout === 'list' ? (
                       // List View Item
