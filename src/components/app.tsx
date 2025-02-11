@@ -294,7 +294,7 @@ export function App({ userId }: { userId: string }) {
                           className={`flex items-center gap-4 p-3 hover:bg-accent/50 transition-colors border-b last:border-b-0 ${
                             selectedItem?.id === item.id ? 'bg-accent' : ''
                           }`}
-                          onClick={() => setSelectedItem(item)}
+                          onClick={() => setSelectedItem(item as StashedItem)}
                         >
                           {/* Left side - Icon or small image */}
                           <div className="shrink-0">
@@ -379,11 +379,10 @@ export function App({ userId }: { userId: string }) {
                         // Original Card View (your existing card code)
                         <Card 
                           key={item.id}
-                          // @ts-ignore
                           className={`cursor-pointer hover:shadow-md transition-shadow ${
-                            selectedItem?.id === (item as any).id ? 'ring-2 ring-primary' : ''
+                            selectedItem?.id === (item as StashedItem).id ? 'ring-2 ring-primary' : ''
                           }`}
-                          onClick={() => setSelectedItem(item)}
+                          onClick={() => setSelectedItem(item as StashedItem)}
                         >
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-2">
