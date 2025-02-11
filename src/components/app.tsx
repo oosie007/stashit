@@ -114,7 +114,7 @@ export function App({ userId }: { userId: string }) {
     }
   }
 
-  const filteredItems = items.filter((item: StashedItem) => {
+  const filteredItems: StashedItem[] = items.filter((item: StashedItem) => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -378,7 +378,7 @@ export function App({ userId }: { userId: string }) {
                       <Card 
                         key={item.id}
                         className={`cursor-pointer hover:shadow-md transition-shadow ${
-                          selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
+                          selectedItem?.id === (item as StashedItem).id ? 'ring-2 ring-primary' : ''
                         }`}
                         onClick={() => setSelectedItem(item)}
                       >
