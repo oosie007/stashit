@@ -115,15 +115,17 @@ export function App({ userId }: { userId: string }) {
   }
 
   const filteredItems = items.filter((item): item is StashedItem => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    if (!item?.id) return false;
+    
+    const matchesSearch = item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.summary?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase())
+      item.highlighted_text?.toLowerCase().includes(searchQuery.toLowerCase()) || false
 
     const matchesCategory = 
       selectedCategory === 'all' ||
       (selectedCategory === 'articles' && item.type === 'link') ||
       (selectedCategory === 'highlights' && item.type === 'highlight') ||
-      (selectedCategory === 'loved' && item.is_loved)
+      (selectedCategory === 'loved' && Boolean(item.is_loved))
 
     return matchesSearch && matchesCategory
   })
