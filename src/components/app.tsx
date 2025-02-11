@@ -21,6 +21,7 @@ import {
   X,
   PenLine,
   ExternalLink,
+  Link2,
 } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import {
@@ -268,7 +269,7 @@ export function App({ userId }: { userId: string }) {
         <div className="flex-1 overflow-hidden">
           <div className="h-full flex">
             {/* Items List */}
-            <div className={`${selectedItem ? 'w-1/2' : 'w-full'} overflow-y-auto p-4`}>
+            <div className={`${selectedItem ? 'w-2/5' : 'w-full'} overflow-y-auto p-4`}>
               {filteredItems.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-muted-foreground">
@@ -278,82 +279,174 @@ export function App({ userId }: { userId: string }) {
                   </p>
                 </div>
               ) : (
-                <div className={layout === 'card' 
-                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                  : 'space-y-4'
+                <div className={
+                  selectedItem || layout === 'list'
+                    ? 'flex flex-col' // List view - one item per line
+                    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' // Card grid
                 }>
                   {filteredItems.map((item) => (
-                    <Card 
-                      key={item.id}
-                      className={`cursor-pointer hover:shadow-md transition-shadow ${
-                        selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
-                      }`}
-                      onClick={() => setSelectedItem(item)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h2 className="text-xl font-semibold">{item.title}</h2>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleFavorite(item)
-                              }}
+                    selectedItem || layout === 'list' ? (
+                      // List View Item
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-4 p-3 hover:bg-accent/50 transition-colors border-b last:border-b-0 ${
+                          selectedItem?.id === item.id ? 'bg-accent' : ''
+                        }`}
+                        onClick={() => setSelectedItem(item)}
+                      >
+                        {/* Left side - Icon or small image */}
+                        <div className="shrink-0">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt=""
+                              className="w-10 h-10 rounded object-cover"
+                            />
+                          ) : (
+                            <Link2 className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+
+                        {/* Middle - Main content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium truncate">{item.title}</h3>
+                            {item.tags?.length > 0 && (
+                              <div className="flex gap-1">
+                                {item.tags.slice(0, 2).map((tag) => (
+                                  <Badge key={tag} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                                {item.tags.length > 2 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    +{item.tags.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <a 
+                              href={item.url}
+                              className="truncate hover:underline"
+                              onClick={e => e.stopPropagation()}
+                              target="_blank"
+                              rel="noopener noreferrer"
                             >
-                              <Heart
-                                className={`h-4 w-4 ${
-                                  item.is_loved ? 'fill-current text-red-500' : ''
-                                }`}
-                              />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deleteItem(item.id)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              {item.url}
+                            </a>
+                            {item.type === 'highlight' && (
+                              <Badge variant="outline" className="text-xs">Highlight</Badge>
+                            )}
                           </div>
                         </div>
-                        {item.image_url && layout === 'card' && (
-                          <img
-                            src={item.image_url}
-                            alt=""
-                            className="w-full h-40 object-cover rounded-md mb-4"
-                          />
-                        )}
-                        {item.type === 'highlight' && item.highlighted_text && (
-                          <blockquote className="border-l-4 border-primary pl-4 my-2 italic">
-                            {item.highlighted_text}
-                          </blockquote>
-                        )}
-                        {item.summary && (
-                          <p className="text-muted-foreground text-sm line-clamp-3">
-                            {item.summary}
-                          </p>
-                        )}
-                        <div className="flex flex-wrap gap-2 mt-4">
-                          {item.tags?.map((tag) => (
-                            <Badge key={tag} variant="secondary">
-                              {tag}
-                            </Badge>
-                          ))}
+
+                        {/* Right side - Actions */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleFavorite(item)
+                            }}
+                          >
+                            <Heart
+                              className={`h-4 w-4 ${
+                                item.is_loved ? 'fill-current text-red-500' : ''
+                              }`}
+                            />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteItem(item.id)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    ) : (
+                      // Original Card View (your existing card code)
+                      <Card 
+                        key={item.id}
+                        className={`cursor-pointer hover:shadow-md transition-shadow ${
+                          selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
+                        }`}
+                        onClick={() => setSelectedItem(item)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h2 className="text-xl font-semibold">{item.title}</h2>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleFavorite(item)
+                                }}
+                              >
+                                <Heart
+                                  className={`h-4 w-4 ${
+                                    item.is_loved ? 'fill-current text-red-500' : ''
+                                  }`}
+                                />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteItem(item.id)
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          {item.image_url && layout === 'card' && (
+                            <img
+                              src={item.image_url}
+                              alt=""
+                              className="w-full h-40 object-cover rounded-md mb-4"
+                            />
+                          )}
+                          {item.type === 'highlight' && item.highlighted_text && (
+                            <blockquote className="border-l-4 border-primary pl-4 my-2 italic">
+                              {item.highlighted_text}
+                            </blockquote>
+                          )}
+                          {item.summary && (
+                            <p className="text-muted-foreground text-sm line-clamp-3">
+                              {item.summary}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-2 mt-4">
+                            {item.tags?.map((tag) => (
+                              <Badge key={tag} variant="secondary">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Preview Pane */}
+            {/* Preview Pane - made wider */}
             {selectedItem && (
-              <div className="w-1/2 border-l overflow-y-auto">
+              <div className="w-3/5 border-l overflow-y-auto">
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-4">
                     <h2 className="text-2xl font-bold">{selectedItem.title}</h2>
