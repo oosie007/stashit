@@ -284,7 +284,17 @@ export function App({ userId }: { userId: string }) {
                     ? 'flex flex-col'
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
                 }>
-                  {filteredItems.map((item: { id: string } & Partial<StashedItem>) => {
+                  {(filteredItems as Array<{
+                    id: string;
+                    title: string;
+                    url: string;
+                    tags: string[];
+                    type: 'link' | 'highlight';
+                    is_loved?: boolean;
+                    image_url?: string;
+                    summary?: string;
+                    highlighted_text?: string;
+                  }>).map((item) => {
                     return (
                       selectedItem || layout === 'list' ? (
                         // List View Item
