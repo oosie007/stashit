@@ -78,7 +78,6 @@ type CategoryType = 'all' | 'articles' | 'highlights' | 'loved'
 
 export function App({ userId }: { userId: string }) {
   const [items, setItems] = useState<StashedItem[]>([])
-  const [filteredItems, setFilteredItems] = useState<StashedItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [layout, setLayout] = useState<LayoutType>('card')
