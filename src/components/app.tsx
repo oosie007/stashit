@@ -284,7 +284,7 @@ export function App({ userId }: { userId: string }) {
                     ? 'flex flex-col' // List view - one item per line
                     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' // Card grid
                 }>
-                  {filteredItems.map((item) => (
+                  {filteredItems.map((item: StashedItem) => (
                     selectedItem || layout === 'list' ? (
                       // List View Item
                       <div
