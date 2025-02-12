@@ -20,4 +20,15 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     autoRefreshToken: false,
     persistSession: false
   }
-}) 
+})
+
+export const clearSupabaseData = async () => {
+  try {
+    await supabase.auth.signOut()
+    localStorage.clear()
+    // Force reload the page
+    window.location.href = '/'
+  } catch (error) {
+    console.error('Error clearing data:', error)
+  }
+} 

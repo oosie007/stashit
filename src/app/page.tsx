@@ -10,19 +10,28 @@ import { Globe } from 'lucide-react'
 export default function Home() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
+  const [hasSession, setHasSession] = useState(false)
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        router.push('/dashboard')
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+        
+        if (session) {
+          setHasSession(true)
+          router.push('/dashboard')
+        }
+      } catch (error) {
+        console.error('Error checking session:', error)
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
     checkUser()
   }, [router])
 
-  if (isLoading) return null
+  if (isLoading && hasSession) return null
 
   return (
     <div className="flex min-h-screen">
@@ -55,8 +64,11 @@ export default function Home() {
             />
           </div>
           <div className="flex gap-4">
-            <Link href="/auth">
-              <Button>Sign In</Button>
+            <Link href="/auth?mode=register" passHref>
+              <Button>Sign up with Email</Button>
+            </Link>
+            <Link href="/auth" passHref>
+              <Button variant="outline">Sign in</Button>
             </Link>
           </div>
         </div>
@@ -94,6 +106,16 @@ export default function Home() {
         <div className="text-center text-sm text-muted-foreground mt-6">
           &copy; {new Date().getFullYear()} StashIt. All rights reserved.
         </div>
+
+        {process.env.NODE_ENV === 'development' && (
+          <Button
+            variant="outline"
+            onClick={() => supabase.auth.signOut()}
+            className="absolute top-4 right-4"
+          >
+            Clear Session (Dev)
+          </Button>
+        )}
       </div>
     </div>
   )
