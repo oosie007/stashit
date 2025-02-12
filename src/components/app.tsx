@@ -22,6 +22,7 @@ import {
   PenLine,
   ExternalLink,
   Link2,
+  Clock,
 } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import {
@@ -56,19 +57,21 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import DOMPurify from 'isomorphic-dompurify'
 
-interface StashedItem {
+export interface StashedItem {
   id: string;
   title: string;
   url: string;
+  type: 'link' | 'highlight' | 'saved_image';
   content?: string;
-  tags: string[];
-  image_url?: string;
-  created_at: string;
-  type: 'link' | 'highlight';
   highlighted_text?: string;
-  summary?: string;
-  user_id: string;
+  scraped_content?: string;
+  screenshot?: string;
+  image_url?: string;
+  source_url?: string;
+  tags: string[];
+  created_at: string;
   is_loved?: boolean;
 }
 
@@ -84,6 +87,7 @@ export function App({ userId }: { userId: string }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [selectedItem, setSelectedItem] = useState<StashedItem | null>(null)
+  const [iframeError, setIframeError] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -165,6 +169,29 @@ export function App({ userId }: { userId: string }) {
       console.error('Error deleting item:', err)
     }
   }
+
+  // Add a new function to clean and sanitize HTML
+  function cleanHtml(html: string) {
+    // Remove scripts and other potentially dangerous elements
+    return html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      // Keep basic formatting
+      .replace(/(<\/?(?:div|p|br|h[1-6]|ul|ol|li|blockquote|pre|code)[^>]*>)/gi, '$1')
+      // Remove all other tags
+      .replace(/<(?!\/?(?:div|p|br|h[1-6]|ul|ol|li|blockquote|pre|code))[^>]+>/gi, '');
+  }
+
+  useEffect(() => {
+    if (selectedItem) {
+      // Check if the URL is accessible
+      fetch(selectedItem.url, { mode: 'no-cors' })
+        .catch(() => {
+          setIframeError(true);
+        });
+    }
+  }, [selectedItem]);
 
   if (loading) return <div>Loading your stashed items...</div>
   if (error) return <div>Error: {error}</div>
@@ -374,64 +401,98 @@ export function App({ userId }: { userId: string }) {
                         ) : (
                           <Card 
                             key={item.id}
-                            className={`cursor-pointer hover:shadow-md transition-shadow ${
+                            className={`group cursor-pointer hover:shadow-md transition-all relative ${
                               selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
                             }`}
                             onClick={() => setSelectedItem(item)}
                           >
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-start mb-2">
-                                <h2 className="text-xl font-semibold">{item.title}</h2>
-                                <div className="flex gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleFavorite(item)
-                                    }}
-                                  >
-                                    <Heart
-                                      className={`h-4 w-4 ${
-                                        item.is_loved ? 'fill-current text-red-500' : ''
-                                      }`}
-                                    />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      deleteItem(item.id)
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                            {/* Image container with overlay */}
+                            <div className="relative">
+                              {item.image_url ? (
+                                <>
+                                  <img
+                                    src={item.image_url}
+                                    alt=""
+                                    className="w-full h-48 object-cover rounded-t-xl"
+                                  />
+                                  {/* Dark overlay on hover */}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors rounded-t-xl" />
+                                </>
+                              ) : (
+                                <div className="w-full h-48 bg-muted flex items-center justify-center rounded-t-xl">
+                                  <Link2 className="h-8 w-8 text-muted-foreground" />
                                 </div>
+                              )}
+                              
+                              {/* Action buttons - only show on hover */}
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                <Button
+                                  variant="secondary"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleFavorite(item)
+                                  }}
+                                >
+                                  <Heart
+                                    className={`h-4 w-4 ${
+                                      item.is_loved ? 'fill-current text-red-500' : ''
+                                    }`}
+                                  />
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    deleteItem(item.id)
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
-                              {item.image_url && layout === 'card' && (
-                                <img
-                                  src={item.image_url}
-                                  alt=""
-                                  className="w-full h-40 object-cover rounded-md mb-4"
-                                />
-                              )}
-                              {item.type === 'highlight' && item.highlighted_text && (
-                                <blockquote className="border-l-4 border-primary pl-4 my-2 italic">
-                                  {item.highlighted_text}
-                                </blockquote>
-                              )}
-                              {item.summary && (
-                                <p className="text-muted-foreground text-sm line-clamp-3">
-                                  {item.summary}
-                                </p>
-                              )}
-                              <div className="flex flex-wrap gap-2 mt-4">
+                            </div>
+
+                            <CardContent className="p-4">
+                              <h2 className="text-xl font-semibold mb-2 line-clamp-2">{item.title}</h2>
+                              
+                              {/* Tags right after title */}
+                              <div className="flex flex-wrap gap-1 mb-3">
                                 {item.tags?.map((tag) => (
-                                  <Badge key={tag} variant="secondary">
+                                  <Badge key={tag} variant="secondary" className="text-xs">
                                     {tag}
                                   </Badge>
                                 ))}
+                              </div>
+
+                              {item.type === 'highlight' && item.highlighted_text && (
+                                <blockquote className="border-l-4 border-primary pl-4 my-2 italic text-sm line-clamp-3">
+                                  {item.highlighted_text}
+                                </blockquote>
+                              )}
+                              
+                              {item.summary && (
+                                <p className="text-muted-foreground text-sm line-clamp-2 mb-2">
+                                  {item.summary}
+                                </p>
+                              )}
+
+                              {/* Just URL at bottom */}
+                              <div className="mt-auto pt-2 border-t text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Link2 className="h-3 w-3" />
+                                  <a 
+                                    href={item.url}
+                                    className="hover:underline truncate"
+                                    onClick={e => e.stopPropagation()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {item.url}
+                                  </a>
+                                </div>
                               </div>
                             </CardContent>
                           </Card>
@@ -442,7 +503,7 @@ export function App({ userId }: { userId: string }) {
               )}
             </div>
 
-            {/* Preview Pane - made wider */}
+            {/* Preview Pane */}
             {selectedItem && (
               <div className="w-3/5 border-l overflow-y-auto">
                 <div className="p-4">
@@ -463,35 +524,36 @@ export function App({ userId }: { userId: string }) {
                       className="w-full rounded-lg mb-4"
                     />
                   )}
-                  {selectedItem.type === 'highlight' && selectedItem.highlighted_text && (
-                    <blockquote className="border-l-4 border-primary pl-4 my-4 italic">
+                  {selectedItem.type === 'highlight' ? (
+                    <blockquote className="border-l-4 border-primary pl-4 my-4 italic text-lg">
                       {selectedItem.highlighted_text}
                     </blockquote>
+                  ) : (
+                    <>
+                      {selectedItem.summary && (
+                        <p className="text-muted-foreground mb-4">
+                          {selectedItem.summary}
+                        </p>
+                      )}
+                      {selectedItem.scraped_content && (
+                        <div 
+                          className="prose max-w-none"
+                          dangerouslySetInnerHTML={{ 
+                            __html: DOMPurify.sanitize(selectedItem.scraped_content) 
+                          }} 
+                        />
+                      )}
+                    </>
                   )}
-                  {selectedItem.summary && (
-                    <p className="text-muted-foreground mb-4">
-                      {selectedItem.summary}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {selectedItem.tags?.map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <a
-                      href={selectedItem.url}
-                      target="_blank"
+                  <div className="mt-4">
+                    <a 
+                      href={selectedItem.url} 
+                      target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline flex items-center gap-2"
+                      className="text-sm text-muted-foreground hover:underline"
                     >
-                      Visit Original <ExternalLink className="h-4 w-4" />
+                      Visit original page →
                     </a>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(selectedItem.created_at).toLocaleDateString()}
-                    </span>
                   </div>
                 </div>
               </div>

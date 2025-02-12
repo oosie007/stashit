@@ -70,3 +70,32 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Add styles for preserved HTML content */
+.content {
+  @apply text-base leading-relaxed;
+}
+
+.content h1, .content h2, .content h3 {
+  @apply font-bold my-4;
+}
+
+.content p {
+  @apply my-3;
+}
+
+.content ul, .content ol {
+  @apply ml-6 my-3;
+}
+
+.content li {
+  @apply list-disc;
+}
+
+.content blockquote {
+  @apply border-l-4 border-gray-300 pl-4 italic my-4;
+}
+
+.content pre, .content code {
+  @apply bg-gray-100 rounded p-2 font-mono text-sm;
+}
