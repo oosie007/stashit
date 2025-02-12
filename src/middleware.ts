@@ -10,14 +10,17 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
-  // If user is not signed in and the current path is not /auth,
-  // redirect the user to /auth
+  // Allow the home page (/) to be accessible without auth
+  if (req.nextUrl.pathname === '/') {
+    return res
+  }
+
+  // Protect dashboard and other routes
   if (!session && req.nextUrl.pathname !== '/auth') {
     return NextResponse.redirect(new URL('/auth', req.url))
   }
 
-  // If user is signed in and the current path is /auth,
-  // redirect the user to /dashboard
+  // If user is signed in and tries to access /auth, redirect to dashboard
   if (session && req.nextUrl.pathname === '/auth') {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
@@ -26,6 +29,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/', '/dashboard/:path*', '/auth']
 } 
 

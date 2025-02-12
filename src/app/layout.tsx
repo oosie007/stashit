@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "StashIt",
   description: "Save anything from the web - links, highlights, and more",
+  icons: {
+    icon: '/images/logo.png',
+  },
 }
 
 export default async function RootLayout({

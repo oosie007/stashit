@@ -29,7 +29,11 @@ export default function Home() {
       {/* Left section with dark background */}
       <div className="hidden lg:flex w-1/2 bg-black text-white p-12 flex-col justify-between">
         <div>
-          <h1 className="text-2xl font-bold">StashIt</h1>
+          <img 
+            src="/images/logo.png" 
+            alt="StashIt Logo" 
+            className="h-16 w-auto invert" // Inverted since background is black
+          />
         </div>
         
         <div className="space-y-4">
@@ -44,17 +48,15 @@ export default function Home() {
       <div className="flex-1 p-8 lg:p-12 flex flex-col justify-between">
         <div className="flex justify-between items-center">
           <div className="lg:hidden">
-            <h1 className="text-2xl font-bold">StashIt</h1>
+            <img 
+              src="/images/logo.png" 
+              alt="StashIt Logo" 
+              className="h-12 w-auto dark:invert"
+            />
           </div>
           <div className="flex gap-4">
             <Link href="/auth">
               <Button>Sign In</Button>
-            </Link>
-            <Link href="/board">
-              <Button variant="outline">
-                <Globe className="mr-2 h-4 w-4" />
-                View Public Board
-              </Button>
             </Link>
           </div>
         </div>

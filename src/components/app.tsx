@@ -23,6 +23,7 @@ import {
   ExternalLink,
   Link2,
   Clock,
+  Image,
 } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import {
@@ -58,6 +59,7 @@ import {
 } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import DOMPurify from 'isomorphic-dompurify'
+import { Skeleton } from "@/components/ui/skeleton"
 
 export interface StashedItem {
   id: string;
@@ -76,7 +78,7 @@ export interface StashedItem {
 }
 
 type LayoutType = 'card' | 'list'
-type CategoryType = 'all' | 'articles' | 'highlights' | 'loved'
+type CategoryType = 'all' | 'articles' | 'highlights' | 'loved' | 'images'
 
 export function App({ userId }: { userId: string }) {
   const [items, setItems] = useState<StashedItem[]>([])
@@ -124,6 +126,7 @@ export function App({ userId }: { userId: string }) {
       selectedCategory === 'all' ||
       (selectedCategory === 'articles' && item.type === 'link') ||
       (selectedCategory === 'highlights' && item.type === 'highlight') ||
+      (selectedCategory === 'images' && item.type === 'saved_image') ||
       (selectedCategory === 'loved' && item.is_loved)
 
     return matchesSearch && matchesCategory
@@ -193,7 +196,54 @@ export function App({ userId }: { userId: string }) {
     }
   }, [selectedItem]);
 
-  if (loading) return <div>Loading your stashed items...</div>
+  if (loading) return (
+    <div className="flex h-screen">
+      {/* Sidebar skeleton */}
+      <div className="w-64 border-r p-4">
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-32" />
+          </div>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main content skeleton */}
+      <div className="flex-1 p-4">
+        {/* Header skeleton */}
+        <div className="mb-8 flex justify-between items-center">
+          <Skeleton className="h-10 w-64" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-10 w-10" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+
+        {/* Cards grid skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-lg border">
+              <Skeleton className="h-48 rounded-t-lg" />
+              <div className="p-4 space-y-3">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
   if (error) return <div>Error: {error}</div>
 
   return (
@@ -202,44 +252,60 @@ export function App({ userId }: { userId: string }) {
       <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-background border-r`}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-2xl font-bold">StashIt</h1>
+            <div className="flex items-center gap-2">
+              <img 
+                src="/images/logo.png" 
+                alt="StashIt Logo" 
+                className="h-16 w-auto dark:invert"
+              />
+            </div>
             <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
           <nav className="space-y-2">
-            <Button
-              variant={selectedCategory === 'all' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setSelectedCategory('all')}
-            >
-              <Bookmark className="mr-2 h-4 w-4" />
-              All Stashes
-            </Button>
-            <Button
-              variant={selectedCategory === 'articles' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setSelectedCategory('articles')}
-            >
-              <Newspaper className="mr-2 h-4 w-4" />
-              Stashed Articles
-            </Button>
-            <Button
-              variant={selectedCategory === 'highlights' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setSelectedCategory('highlights')}
-            >
-              <Quote className="mr-2 h-4 w-4" />
-              Stashed Highlights
-            </Button>
-            <Button
-              variant={selectedCategory === 'loved' ? 'default' : 'ghost'}
-              className="w-full justify-start"
-              onClick={() => setSelectedCategory('loved')}
-            >
-              <Heart className="mr-2 h-4 w-4" />
-              Loved Stashes
-            </Button>
+            <div className="space-y-1">
+              <Button
+                variant={selectedCategory === 'all' ? 'secondary' : 'ghost'}
+                className="w-full justify-start"
+                onClick={() => setSelectedCategory('all')}
+              >
+                <Bookmark className="mr-2 h-4 w-4" />
+                All Items
+              </Button>
+              <Button
+                variant={selectedCategory === 'articles' ? 'secondary' : 'ghost'}
+                className="w-full justify-start"
+                onClick={() => setSelectedCategory('articles')}
+              >
+                <Newspaper className="mr-2 h-4 w-4" />
+                Articles
+              </Button>
+              <Button
+                variant={selectedCategory === 'highlights' ? 'secondary' : 'ghost'}
+                className="w-full justify-start"
+                onClick={() => setSelectedCategory('highlights')}
+              >
+                <Quote className="mr-2 h-4 w-4" />
+                Highlights
+              </Button>
+              <Button
+                variant={selectedCategory === 'images' ? 'secondary' : 'ghost'}
+                className="w-full justify-start"
+                onClick={() => setSelectedCategory('images')}
+              >
+                <Image className="mr-2 h-4 w-4" />
+                Stashed Images
+              </Button>
+              <Button
+                variant={selectedCategory === 'loved' ? 'secondary' : 'ghost'}
+                className="w-full justify-start"
+                onClick={() => setSelectedCategory('loved')}
+              >
+                <Heart className="mr-2 h-4 w-4" />
+                Loved Items
+              </Button>
+            </div>
           </nav>
         </div>
       </div>
