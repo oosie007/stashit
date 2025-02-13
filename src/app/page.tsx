@@ -1,16 +1,18 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from "@/components/ui/button"
+import AuthForm from '@/components/auth-form'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import { Globe } from 'lucide-react'
 
 export default function Home() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [hasSession, setHasSession] = useState(false)
+  const [showAuthForm, setShowAuthForm] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
 
   useEffect(() => {
     const checkUser = async () => {
@@ -41,7 +43,7 @@ export default function Home() {
           <img 
             src="/images/logo.png" 
             alt="StashIt Logo" 
-            className="h-16 w-auto invert" // Inverted since background is black
+            className="h-16 w-auto invert"
           />
         </div>
         
@@ -54,8 +56,9 @@ export default function Home() {
       </div>
 
       {/* Right section */}
-      <div className="flex-1 p-8 lg:p-12 flex flex-col justify-between">
-        <div className="flex justify-between items-center">
+      <div className="flex-1 p-8 lg:p-12 flex flex-col">
+        {/* Top navigation */}
+        <div className="flex justify-between items-center mb-8">
           <div className="lg:hidden">
             <img 
               src="/images/logo.png" 
@@ -63,46 +66,63 @@ export default function Home() {
               className="h-12 w-auto dark:invert"
             />
           </div>
-          <div className="flex gap-4">
-            <Link href="/auth?mode=register" passHref>
-              <Button>Sign up with Email</Button>
-            </Link>
-            <Link href="/auth" passHref>
-              <Button variant="outline">Sign in</Button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="max-w-md mx-auto flex-1 flex flex-col justify-center space-y-6">
-          <div className="space-y-2 text-center">
-            <h2 className="text-3xl font-bold">Create an account</h2>
-            <p className="text-muted-foreground">
-              Enter your email below to create your account
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <Button 
-              className="w-full" 
-              onClick={() => router.push('/auth?mode=register')}
+          <div className="ml-auto">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowAuthForm(true)
+                setIsRegistering(false)
+              }}
             >
-              Sign up with Email
+              Login
             </Button>
           </div>
-
-          <p className="px-8 text-center text-sm text-muted-foreground">
-            By clicking continue, you agree to our{' '}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
-              Terms of Service
-            </a>{' '}
-            and{' '}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
-              Privacy Policy
-            </a>
-            .
-          </p>
         </div>
 
+        {/* Main content */}
+        <div className="flex-1 flex items-center justify-center">
+          {showAuthForm ? (
+            <AuthForm 
+              initialMode={isRegistering} 
+              onCancel={() => setShowAuthForm(false)}
+            />
+          ) : (
+            <div className="max-w-md mx-auto text-center space-y-6">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold">Create an account</h2>
+                <p className="text-muted-foreground">
+                  Enter your email below to create your account
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    setShowAuthForm(true)
+                    setIsRegistering(true)
+                  }}
+                >
+                  Sign up with Email
+                </Button>
+              </div>
+
+              <p className="px-8 text-sm text-muted-foreground">
+                By clicking continue, you agree to our{' '}
+                <a href="#" className="underline underline-offset-4 hover:text-primary">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="#" className="underline underline-offset-4 hover:text-primary">
+                  Privacy Policy
+                </a>
+                .
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
         <div className="text-center text-sm text-muted-foreground mt-6">
           &copy; {new Date().getFullYear()} StashIt. All rights reserved.
         </div>

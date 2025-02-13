@@ -12,9 +12,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AuthFormProps {
   initialMode?: boolean;
+  onCancel?: () => void;
 }
 
-export default function AuthForm({ initialMode = false }: AuthFormProps) {
+export default function AuthForm({ initialMode = false, onCancel }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -79,13 +80,27 @@ export default function AuthForm({ initialMode = false }: AuthFormProps) {
   return (
     <Card className="w-[350px]">
       <CardHeader>
-        <CardTitle>{isRegistering ? 'Create Account' : 'Welcome Back'}</CardTitle>
-        <CardDescription>
-          {isRegistering 
-            ? 'Enter your email below to create your account'
-            : 'Enter your email and password to sign in'
-          }
-        </CardDescription>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>{isRegistering ? 'Create Account' : 'Welcome Back'}</CardTitle>
+            <CardDescription>
+              {isRegistering 
+                ? 'Enter your email below to create your account'
+                : 'Enter your email and password to sign in'
+              }
+            </CardDescription>
+          </div>
+          {onCancel && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onCancel}
+              className="rounded-full"
+            >
+              ✕
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
