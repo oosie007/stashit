@@ -45,33 +45,23 @@ export default function AuthForm({ initialMode = false, onCancel }: AuthFormProp
           text: 'Check your email for the confirmation link.',
           type: 'success'
         });
-        setEmail('');
-        setPassword('');
       } else {
-        const { error, data } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
         if (error) throw error;
-        
-        if (data.session) {
-          router.refresh();
-          router.push('/dashboard');
-        }
+
+        router.refresh();
+        router.push('/dashboard');
       }
     } catch (error) {
-      if (error instanceof AuthError) {
-        setMessage({
-          text: error.message,
-          type: 'error'
-        });
-      } else {
-        setMessage({
-          text: 'An unexpected error occurred',
-          type: 'error'
-        });
-      }
+      console.error('Auth error:', error);
+      setMessage({
+        text: error instanceof AuthError ? error.message : 'An error occurred',
+        type: 'error'
+      });
     } finally {
       setIsLoading(false);
     }

@@ -1,17 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { App } from '@/components/app'
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect('/auth')
   }
 
-  return <App userId={session.user.id} />
+  return <App userId={user.id} />
 } 

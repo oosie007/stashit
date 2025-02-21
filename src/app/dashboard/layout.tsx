@@ -7,16 +7,22 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createServerComponentClient({ cookies })
-  const { data: { session } } = await supabase.auth.getSession()
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
-    redirect('/')
+  if (!user) {
+    redirect('/auth')
   }
 
   return (
-    <div className="flex min-h-screen">
-      {children}
+    <div className="flex min-h-screen flex-col">
+      <main className="flex-1">
+        {children}
+      </main>
     </div>
   )
 } 
