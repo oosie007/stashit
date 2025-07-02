@@ -86,11 +86,11 @@ export interface StashedItem {
 }
 
 type LayoutType = 'card' | 'list'
-type CategoryType = 'all' | 'articles' | 'highlights' | 'loved' | 'images' | 'pocket'
+type CategoryType = 'all' | 'articles' | 'highlights' | 'loved' | 'images'
 
 interface AppProps {
   userId: string
-  filter?: 'article' | 'highlight' | 'image' | 'pocket'
+  filter?: 'article' | 'highlight' | 'image'
 }
 
 export function App({ userId, filter }: AppProps) {
@@ -162,7 +162,6 @@ export function App({ userId, filter }: AppProps) {
       activeCategory === 'articles' ? item.type === 'link' :
       activeCategory === 'highlights' ? item.type === 'highlight' :
       activeCategory === 'images' ? ['image', 'saved_image'].includes(item.type) :
-      activeCategory === 'pocket' ? item.type === 'pocket' :
       activeCategory === 'loved' ? item.is_loved :
       false
 

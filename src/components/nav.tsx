@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { BookmarkIcon, HighlighterIcon, ImageIcon, HeartIcon, PocketIcon } from 'lucide-react'
+import { BookmarkIcon, HighlighterIcon, ImageIcon, HeartIcon } from 'lucide-react'
 
-type CategoryType = 'all' | 'articles' | 'highlights' | 'loved' | 'images' | 'pocket'
+type CategoryType = 'all' | 'articles' | 'highlights' | 'loved' | 'images'
 
 export function Nav({ 
   activeCategory, 
@@ -21,7 +21,6 @@ export function Nav({
     { id: 'articles', label: 'Articles', icon: BookmarkIcon },
     { id: 'highlights', label: 'Highlights', icon: HighlighterIcon },
     { id: 'images', label: 'Stashed Images', icon: ImageIcon },
-    { id: 'pocket', label: 'Pocket Saves', icon: PocketIcon },
     { id: 'loved', label: 'Loved', icon: HeartIcon },
   ]
 
