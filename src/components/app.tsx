@@ -20,8 +20,7 @@ import {
   Lock,
   X,
   PenLine,
-  ExternalLink,
-  Link2,
+  Link,
   Clock,
   Image,
   LogOut,
@@ -325,7 +324,7 @@ export function App({ userId, filter }: AppProps) {
                   rel="noopener noreferrer" 
                   className="inline-flex items-center text-primary hover:underline"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <Link className="h-4 w-4 mr-2" />
                   Visit Original
                 </a>
               )}
@@ -423,7 +422,7 @@ export function App({ userId, filter }: AppProps) {
         {/* Content Area */}
         <main className="flex-1 overflow-auto">
           {viewMode === 'card' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-4">
               {filteredItems.map((item) => {
                 return (
                   <Card 
@@ -447,7 +446,7 @@ export function App({ userId, filter }: AppProps) {
                         </>
                       ) : (
                         <div className="w-full h-48 bg-muted flex items-center justify-center rounded-t-xl">
-                          <Link2 className="h-8 w-8 text-muted-foreground" />
+                          <Link className="h-8 w-8 text-muted-foreground" />
                         </div>
                       )}
                       
@@ -468,6 +467,22 @@ export function App({ userId, filter }: AppProps) {
                             }`}
                           />
                         </Button>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          aria-label="Open link in new tab"
+                        >
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8"
+                            asChild
+                          >
+                            <Link className="h-4 w-4" />
+                          </Button>
+                        </a>
                         <Button
                           variant="secondary"
                           size="icon"
@@ -505,22 +520,6 @@ export function App({ userId, filter }: AppProps) {
                           {item.summary}
                         </p>
                       )}
-
-                      {/* Just URL at bottom */}
-                      <div className="mt-auto pt-2 border-t text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Link2 className="h-3 w-3" />
-                          <a 
-                            href={item.url}
-                            className="hover:underline truncate"
-                            onClick={e => e.stopPropagation()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {item.url}
-                          </a>
-                        </div>
-                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -591,7 +590,7 @@ export function App({ userId, filter }: AppProps) {
                         rel="noopener noreferrer"
                         className="inline-flex items-center text-sm text-primary hover:underline"
                       >
-                        <ExternalLink className="h-4 w-4 mr-2" />
+                        <Link className="h-4 w-4 mr-2" />
                         Visit Original
                       </a>
                     )}
@@ -609,4 +608,11 @@ export function App({ userId, filter }: AppProps) {
     </div>
   )
 }
+
+<style jsx global>{`
+  .custom-header-title {
+    font-size: 0.85rem !important;
+    line-height: 1.35rem !important;
+  }
+`}</style>
  

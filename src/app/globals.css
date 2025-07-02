@@ -112,3 +112,9 @@ body {
     transform: translateX(0);
   }
 }
+
+/* Custom header size for StashIt main header */
+.header-title-xl {
+  font-size: 0.85rem !important;
+  line-height: 1.35rem !important;
+}
