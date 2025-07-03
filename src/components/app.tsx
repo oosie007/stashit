@@ -75,8 +75,7 @@ export interface StashedItem {
   user_id: string
   title: string
   url: string
-  type: 'link' | 'highlight' | 'image' | 'saved_image' | 'pocket'
-  source_id?: string
+  type: 'link' | 'highlight' | 'image' | 'saved_image'
   summary?: string
   highlighted_text?: string
   is_loved: boolean
