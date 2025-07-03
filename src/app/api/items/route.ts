@@ -114,7 +114,10 @@ export async function POST(req: Request) {
     // Trigger AI synopsis for links only (not highlights or images)
     if (insertData.type === 'link' && insertedData?.id && insertedData?.url) {
       console.log('🧠 Triggering AI synopsis in background for item:', insertedData.id, insertedData.url);
-      fetch('/api/items/ai-synopsis', {
+      const host = req.headers.get('host');
+      const protocol = host && host.startsWith('localhost') ? 'http' : 'https';
+      const aiSynopsisUrl = `${protocol}://${host}/api/items/ai-synopsis`;
+      fetch(aiSynopsisUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: insertedData.url, item_id: insertedData.id })
