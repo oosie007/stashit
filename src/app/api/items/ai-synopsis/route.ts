@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     });
     const ai_synopsis_raw = completion.choices[0]?.message?.content || '';
     function extractField(label: string) {
-      const match = ai_synopsis_raw.match(new RegExp(`-? ?${label}(?:[:\-\n])+([^\n]*)`, 'i'));
+      const match = ai_synopsis_raw.match(new RegExp(`-? ?${label}[:\n\-]+([^\n]*)`, 'i'));
       return match ? match[1].trim() : '';
     }
     const ai_synopsis_title = extractField('Article Title and Author');
