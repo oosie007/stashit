@@ -26,6 +26,7 @@ import {
   LogOut,
   ChevronLeft,
   Loader2,
+  Link2,
 } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import {
@@ -67,6 +68,7 @@ import { useRouter } from 'next/navigation'
 import { Logo } from '@/components/logo'
 import { Nav } from '@/components/nav'
 import UserMenu from '@/components/user-menu'
+import { Sidebar } from '@/components/Sidebar'
 
 export interface StashedItem {
   id: string
@@ -90,6 +92,10 @@ type CategoryType = 'all' | 'articles' | 'highlights' | 'loved' | 'images'
 interface AppProps {
   userId: string
   filter?: 'article' | 'highlight' | 'image'
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function App({ userId, filter }: AppProps) {
@@ -365,24 +371,7 @@ export function App({ userId, filter }: AppProps) {
 
   return (
     <div className="flex h-screen">
-      {/* Fixed Left Sidebar */}
-      <div className="w-64 border-r bg-background flex flex-col">
-        <div className="p-4 border-b flex items-center">
-          <img 
-            src="/images/logo.png"
-            alt="StashIt" 
-            className="h-16 translate-y-1.5"
-            style={{ 
-              filter: 'var(--logo-filter)'
-            }}
-          />
-        </div>
-        <Nav 
-          activeCategory={activeCategory} 
-          onCategoryChange={setActiveCategory} 
-        />
-      </div>
-
+      <Sidebar active={activeCategory} onCategoryChange={(cat) => setActiveCategory(cat as CategoryType)} />
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
@@ -397,22 +386,6 @@ export function App({ userId, filter }: AppProps) {
               />
             </div>
             <div className="flex items-center gap-2 ml-4">
-              <div className="flex border rounded-lg">
-                <Button
-                  variant={viewMode === 'card' ? 'default' : 'ghost'}
-                  size="icon"
-                  onClick={() => setViewMode('card')}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="icon"
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
               <ModeToggle />
               <UserMenu email={userEmail} />
             </div>
@@ -422,108 +395,74 @@ export function App({ userId, filter }: AppProps) {
         {/* Content Area */}
         <main className="flex-1 overflow-auto">
           {viewMode === 'card' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-4">
-              {filteredItems.map((item) => {
-                return (
-                  <Card 
-                    key={item.id}
-                    className={`group cursor-pointer hover:shadow-md transition-all relative ${
-                      selectedItem?.id === item.id ? 'ring-2 ring-primary' : ''
-                    }`}
-                    onClick={() => setSelectedItem(item)}
-                  >
-                    {/* Image container with overlay */}
-                    <div className="relative">
-                      {item.image_url ? (
-                        <>
-                          <img
-                            src={item.image_url}
-                            alt=""
-                            className="w-full h-48 object-cover rounded-t-xl"
-                          />
-                          {/* Dark overlay on hover */}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors rounded-t-xl" />
-                        </>
-                      ) : (
-                        <div className="w-full h-48 bg-muted flex items-center justify-center rounded-t-xl">
-                          <Link className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                      )}
-                      
-                      {/* Action buttons - only show on hover */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleFavorite(item)
-                          }}
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${
-                              item.is_loved ? 'fill-current text-red-500' : ''
-                            }`}
-                          />
-                        </Button>
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          aria-label="Open link in new tab"
-                        >
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8"
-                            asChild
-                          >
-                            <Link className="h-4 w-4" />
-                          </Button>
-                        </a>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            deleteItem(item.id)
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+              {filteredItems.map((item) => (
+                <Card 
+                  key={item.id}
+                  className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative"
+                  onClick={() => setSelectedItem(item)}
+                >
+                  {/* Image at the top */}
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="w-full h-32 object-cover rounded-t-xl"
+                    />
+                  ) : (
+                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
+                      <Link className="h-8 w-8 text-muted-foreground" />
                     </div>
+                  )}
 
-                    <CardContent className="p-4">
-                      <h2 className="text-xl font-semibold mb-2 line-clamp-2">{item.title}</h2>
-                      
-                      {/* Tags right after title */}
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {item.tags?.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
+                  {/* Card content */}
+                  <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                    <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
+                    {item.type === 'highlight' && item.highlighted_text && (
+                      <blockquote className="border-l-4 border-primary pl-3 my-2 text-base text-muted-foreground line-clamp-3 overflow-hidden flex-shrink-0">
+                        {item.highlighted_text}
+                      </blockquote>
+                    )}
+                    {item.summary && (
+                      <p className="text-muted-foreground text-xs line-clamp-2 mb-1">
+                        {item.summary}
+                      </p>
+                    )}
+                  </div>
 
-                      {item.type === 'highlight' && item.highlighted_text && (
-                        <blockquote className="border-l-4 border-primary pl-4 my-2 italic text-sm line-clamp-3">
-                          {item.highlighted_text}
-                        </blockquote>
-                      )}
-                      
-                      {item.summary && (
-                        <p className="text-muted-foreground text-sm line-clamp-2 mb-2">
-                          {item.summary}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                  {/* Action bar at bottom */}
+                  <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
+                    <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={e => { e.stopPropagation(); toggleFavorite(item); }}
+                      >
+                        <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={e => {
+                          e.stopPropagation();
+                          window.open(item.url, "_blank", "noopener,noreferrer");
+                        }}
+                        aria-label="Open link in new tab"
+                      >
+                        <Link className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={e => { e.stopPropagation(); deleteItem(item.id); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           ) : (
             <div className="flex h-full">

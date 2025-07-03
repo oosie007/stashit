@@ -118,3 +118,14 @@ body {
   font-size: 0.85rem !important;
   line-height: 1.35rem !important;
 }
+
+/* Override Tailwind's text-xl utility for main title size */
+.text-xl {
+  font-size: 0.85rem !important;
+  line-height: 1.15rem !important;
+}
+
+/* Override Tailwind's text-base utility for highlight font size */
+.text-base {
+  font-size: 0.9rem !important;
+}
