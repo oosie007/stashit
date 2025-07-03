@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import * as cheerio from 'cheerio';
 import { sanitizeHtml } from '@/lib/utils';
 import { PostgrestError } from '@supabase/supabase-js';
+import OpenAI from 'openai';
 
 // Helper function to add CORS headers
 function corsHeaders(response: NextResponse) {
@@ -69,26 +70,22 @@ async function scrapeUrl(url: string) {
   }
 }
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 export async function POST(req: Request) {
   try {
-    // Verify Supabase URL exists
+    console.log('--- [POST /api/items] Start ---');
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      console.error('Missing NEXT_PUBLIC_SUPABASE_URL');
       throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
     }
-
-    // Log the raw request
     console.log('Raw request headers:', Object.fromEntries(req.headers.entries()));
-    
     const data = await req.json();
     console.log('📥 Received save request:', JSON.stringify(data, null, 2));
-    
-    // Validate required fields
     if (!data.url || !data.user_id) {
       console.error('❌ Missing required fields:', { url: !!data.url, user_id: !!data.user_id });
       throw new Error('Missing required fields: url and user_id are required');
     }
-
-    // Log the data we're about to insert
     const insertData = {
       type: data.type || 'link',
       title: data.title,
@@ -98,78 +95,40 @@ export async function POST(req: Request) {
       user_id: data.user_id,
       image_url: data.image_url,
       summary: data.summary,
-      highlighted_text: data.highlighted_text,
-      needs_scraping: true
+      highlighted_text: data.highlighted_text
     };
-
-    // Log Supabase connection details (don't log keys!)
+    console.log('Insert data:', insertData);
     console.log('🔌 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
     console.log('🔑 Service Role Key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-
     console.log('💾 Attempting to insert:', JSON.stringify(insertData, null, 2));
-
     const { data: insertedData, error: insertError } = await supabase
       .from('stashed_items')
       .insert([insertData])
       .select()
       .single();
-    
     if (insertError) {
       console.error('❌ Insert error:', JSON.stringify(insertError, null, 2));
       throw insertError;
     }
-
     console.log('✅ Initial save successful:', insertedData);
-
-    try {
-      // Use full URL for API call
-      const scrapeUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') 
-        ? 'http://localhost:3000/api/scrape'
-        : 'https://stashit-nine.vercel.app/api/scrape';
-      
-      console.log('🔄 Calling scrape endpoint:', scrapeUrl);
-
-      // Trigger scraping
-      const scrapeResponse = await fetch(scrapeUrl, {
+    // Trigger AI synopsis for links only (not highlights or images)
+    if (insertData.type === 'link' && insertedData?.id && insertedData?.url) {
+      console.log('🧠 Triggering AI synopsis in background for item:', insertedData.id, insertedData.url);
+      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') 
+        ? 'http://localhost:3000' 
+        : 'https://stashit-nine.vercel.app'}/api/items/ai-synopsis`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: data.url })
+        body: JSON.stringify({ url: insertedData.url, item_id: insertedData.id })
+      }).then((res) => {
+        console.log('AI synopsis background response:', res.status);
+      }).catch((err) => {
+        console.error('Error triggering AI synopsis:', err);
       });
-
-      console.log('📡 Scrape response status:', scrapeResponse.status);
-
-      if (scrapeResponse.ok) {
-        const scrapedData = await scrapeResponse.json();
-        console.log('📥 Received scraped content length:', scrapedData.content?.length || 0);
-        
-        if (scrapedData.content) {
-          // Update the item with scraped content
-          const { error: updateError } = await supabase
-            .from('stashed_items')
-            .update({
-              scraped_content: scrapedData.content,
-              scraped_at: new Date().toISOString(),
-              needs_scraping: false
-            })
-            .match({ url: data.url, user_id: data.user_id });
-
-          if (updateError) {
-            console.error('❌ Error updating with scraped content:', updateError);
-          } else {
-            console.log('✅ Updated item with scraped content');
-          }
-        } else {
-          console.error('❌ No content in scrape response');
-        }
-      } else {
-        const errorText = await scrapeResponse.text();
-        console.error('❌ Scraping failed:', errorText);
-      }
-    } catch (scrapeError) {
-      console.error('❌ Error during scraping process:', scrapeError);
-      // Don't throw here - we still want to return success for the initial save
+    } else {
+      console.log('AI synopsis not triggered: type is not link or missing id/url');
     }
-
+    console.log('--- [POST /api/items] End ---');
     return corsHeaders(
       NextResponse.json({ 
         success: true, 
@@ -181,7 +140,6 @@ export async function POST(req: Request) {
     console.error('❌ Error creating item:', error);
     const formattedError = formatError(error);
     console.error('Error details:', formattedError);
-
     return corsHeaders(
       NextResponse.json(
         { 
@@ -191,6 +149,63 @@ export async function POST(req: Request) {
         { status: 500 }
       )
     );
+  }
+}
+
+// New endpoint: POST /api/items/ai-synopsis
+export async function POST_ai_synopsis(req: Request) {
+  try {
+    const { url, item_id } = await req.json();
+    if (!url || !item_id) {
+      return NextResponse.json({ error: 'Missing url or item_id' }, { status: 400 });
+    }
+    // Use the provided prompt template, only send the URL
+    const prompt = `Summarize the content at this URL: ${url}\n\nI want the output in a structured bullet format with the following:\n\n- Article Title and Author\n- Purpose of the article/post\n- Structure or approach taken by the author (if applicable)\n- Key projects, ideas, or sections (grouped by difficulty or theme if relevant)\n- Main takeaways or final thoughts\n\nKeep it concise, clear, and easy to skim. Avoid unnecessary filler.`;
+    // Call OpenAI to summarize
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant that summarizes web pages for a tech-savvy reader.' },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 700,
+      temperature: 0.7
+    });
+    const ai_synopsis_raw = completion.choices[0]?.message?.content || '';
+    function extractField(label: string) {
+      const match = ai_synopsis_raw.match(new RegExp(`-? ?${label}[:\-\n]+([^\n]*)`, 'i'));
+      return match ? match[1].trim() : '';
+    }
+    const ai_synopsis_title = extractField('Article Title and Author');
+    const ai_synopsis_purpose = extractField('Purpose of the article/post');
+    const ai_synopsis_structure = extractField('Structure or approach taken by the author');
+    const ai_synopsis_key_points = extractField('Key projects, ideas, or sections');
+    const ai_synopsis_takeaways = extractField('Main takeaways or final thoughts');
+    // Save to Supabase
+    const { error } = await supabase
+      .from('stashed_items')
+      .update({
+        ai_synopsis: ai_synopsis_raw,
+        ai_synopsis_title,
+        ai_synopsis_purpose,
+        ai_synopsis_structure,
+        ai_synopsis_key_points,
+        ai_synopsis_takeaways
+      })
+      .eq('id', item_id);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({
+      ai_synopsis: ai_synopsis_raw,
+      ai_synopsis_title,
+      ai_synopsis_purpose,
+      ai_synopsis_structure,
+      ai_synopsis_key_points,
+      ai_synopsis_takeaways
+    });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 });
   }
 }
 

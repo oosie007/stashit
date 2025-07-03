@@ -83,6 +83,12 @@ export interface StashedItem {
   image_url?: string
   tags?: string[]
   scraped_content?: string
+  ai_synopsis?: string
+  ai_synopsis_title?: string
+  ai_synopsis_purpose?: string
+  ai_synopsis_structure?: string
+  ai_synopsis_key_points?: string
+  ai_synopsis_takeaways?: string
 }
 
 type LayoutType = 'card' | 'list'
@@ -393,59 +399,128 @@ export function App({ userId, filter }: AppProps) {
 
         {/* Content Area */}
         <main className="flex-1 overflow-auto">
-          {viewMode === 'card' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
-              {filteredItems.map((item) => (
-                <Card 
-                  key={item.id}
-                  className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative"
-                  onClick={() => setSelectedItem(item)}
-                >
-                  {/* Image at the top */}
-                  {item.image_url ? (
-                    <img
-                      src={item.image_url}
-                      alt={item.title}
-                      className="w-full h-32 object-cover rounded-t-xl"
-                    />
-                  ) : (
-                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
-                      <Link className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+            {filteredItems.map((item) => (
+              <Card 
+                key={item.id}
+                className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative"
+                onClick={() => setSelectedItem(item)}
+              >
+                {/* Image at the top */}
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.title}
+                    className="w-full h-32 object-cover rounded-t-xl"
+                  />
+                ) : (
+                  <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
+                    <Link className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
 
-                  {/* Card content */}
-                  <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                    <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
-                    {item.type === 'highlight' && item.highlighted_text && (
-                      <blockquote className="border-l-4 border-primary pl-3 my-2 text-base text-muted-foreground line-clamp-3 overflow-hidden flex-shrink-0">
-                        {item.highlighted_text}
-                      </blockquote>
+                {/* Card content */}
+                <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                  <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
+                  {item.type === 'highlight' && item.highlighted_text && (
+                    <blockquote className="border-l-4 border-primary pl-3 my-2 text-base text-muted-foreground line-clamp-3 overflow-hidden flex-shrink-0">
+                      {item.highlighted_text}
+                    </blockquote>
+                  )}
+                  {item.summary && (
+                    <p className="text-muted-foreground text-xs line-clamp-2 mb-1">
+                      {item.summary}
+                    </p>
+                  )}
+                </div>
+
+                {/* Action bar at bottom */}
+                <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
+                  <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={e => { e.stopPropagation(); toggleFavorite(item); }}
+                    >
+                      <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={e => {
+                        e.stopPropagation();
+                        window.open(item.url, "_blank", "noopener,noreferrer");
+                      }}
+                      aria-label="Open link in new tab"
+                    >
+                      <Link className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={e => { e.stopPropagation(); deleteItem(item.id); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Modal for detailed view */}
+          <Dialog open={!!selectedItem} onOpenChange={open => { if (!open) setSelectedItem(null) }}>
+            <DialogContent className="max-w-2xl w-full p-0 overflow-hidden flex flex-col">
+              {selectedItem && (
+                <div className="flex flex-col h-full max-h-[80vh] relative">
+                  {/* DialogTitle for accessibility */}
+                  <DialogTitle className="text-xl font-bold line-clamp-2 px-6 pt-6">
+                    {selectedItem.ai_synopsis_title || selectedItem.title || "Details"}
+                  </DialogTitle>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Summary at the top */}
+                    {selectedItem.summary && (
+                      <p className="text-muted-foreground text-base font-medium mb-2">{selectedItem.summary}</p>
                     )}
-                    {item.summary && (
-                      <p className="text-muted-foreground text-xs line-clamp-2 mb-1">
-                        {item.summary}
-                      </p>
+                    {/* AI Synopsis fields */}
+                    {selectedItem.ai_synopsis && (
+                      <div className="space-y-2 border rounded-lg p-4 bg-muted/50">
+                        {selectedItem.ai_synopsis_title && (
+                          <div><span className="font-semibold">Title/Author:</span> {selectedItem.ai_synopsis_title}</div>
+                        )}
+                        {selectedItem.ai_synopsis_purpose && (
+                          <div><span className="font-semibold">Purpose:</span> {selectedItem.ai_synopsis_purpose}</div>
+                        )}
+                        {selectedItem.ai_synopsis_structure && (
+                          <div><span className="font-semibold">Structure:</span> {selectedItem.ai_synopsis_structure}</div>
+                        )}
+                        {selectedItem.ai_synopsis_key_points && (
+                          <div><span className="font-semibold">Key Points:</span> {selectedItem.ai_synopsis_key_points}</div>
+                        )}
+                        {selectedItem.ai_synopsis_takeaways && (
+                          <div><span className="font-semibold">Takeaways:</span> {selectedItem.ai_synopsis_takeaways}</div>
+                        )}
+                      </div>
                     )}
                   </div>
-
-                  {/* Action bar at bottom */}
-                  <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
-                    <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
+                  {/* Fixed action bar at the bottom */}
+                  <div className="flex items-center justify-between border-t px-6 py-3 bg-background sticky bottom-0 z-10">
+                    <span className="text-xs text-muted-foreground">{formatDate(selectedItem.created_at)}</span>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={e => { e.stopPropagation(); toggleFavorite(item); }}
+                        onClick={e => { e.stopPropagation(); toggleFavorite(selectedItem); }}
                       >
-                        <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
+                        <Heart className={`h-4 w-4 ${selectedItem.is_loved ? 'fill-current text-red-500' : ''}`} />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={e => {
                           e.stopPropagation();
-                          window.open(item.url, "_blank", "noopener,noreferrer");
+                          window.open(selectedItem.url, "_blank", "noopener,noreferrer");
                         }}
                         aria-label="Open link in new tab"
                       >
@@ -454,93 +529,16 @@ export function App({ userId, filter }: AppProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={e => { e.stopPropagation(); deleteItem(item.id); }}
+                        onClick={e => { e.stopPropagation(); deleteItem(selectedItem.id); setSelectedItem(null); }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="flex h-full">
-              {/* List View */}
-              <div className="w-1/2 border-r">
-                <ScrollArea className="h-full">
-                  <div className="space-y-2 p-4">
-                    {filteredItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                          selectedListItem?.id === item.id 
-                            ? 'bg-primary/5 border-primary/20' 
-                            : 'hover:bg-muted'
-                        }`}
-                        onClick={() => setSelectedListItem(item)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <h3 className="font-medium leading-none">{item.title}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {item.summary || item.highlighted_text || 'No preview available'}
-                            </p>
-                          </div>
-                          {item.image_url && (
-                            <img 
-                              src={item.image_url} 
-                              alt="" 
-                              className="h-16 w-16 rounded object-cover ml-4"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-
-              {/* Preview Pane */}
-              <div className="w-1/2 p-4">
-                {selectedListItem ? (
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-bold">{selectedListItem.title}</h2>
-                    {selectedListItem.image_url && (
-                      <img 
-                        src={selectedListItem.image_url} 
-                        alt="" 
-                        className="w-full rounded-lg"
-                      />
-                    )}
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      {selectedListItem.scraped_content ? (
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: DOMPurify.sanitize(selectedListItem.scraped_content) 
-                        }} />
-                      ) : (
-                        <p>{selectedListItem.summary || selectedListItem.highlighted_text}</p>
-                      )}
-                    </div>
-                    {selectedListItem.url && (
-                      <a 
-                        href={selectedListItem.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-primary hover:underline"
-                      >
-                        <Link className="h-4 w-4 mr-2" />
-                        Visit Original
-                      </a>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground">
-                    Select an item to preview
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
