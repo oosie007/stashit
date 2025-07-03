@@ -398,7 +398,7 @@ export function App({ userId, filter }: AppProps) {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
             {filteredItems.map((item) => (
               <Card 
@@ -406,34 +406,51 @@ export function App({ userId, filter }: AppProps) {
                 className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative"
                 onClick={() => setSelectedItem(item)}
               >
-                {/* Image at the top */}
-                {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.title}
-                    className="w-full h-32 object-cover rounded-t-xl"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
-                    <Link className="h-8 w-8 text-muted-foreground" />
+                {/* Card content for highlights */}
+                {item.type === 'highlight' ? (
+                  <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                    <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
+                    {item.highlighted_text && (
+                      <blockquote
+                        className="border-l-4 border-primary pl-4 my-2 text-base text-muted-foreground bg-muted/30 rounded flex-1 overflow-hidden"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 12,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          minHeight: 0,
+                        }}
+                      >
+                        {item.highlighted_text}
+                      </blockquote>
+                    )}
                   </div>
+                ) : (
+                  <>
+                    {/* Image at the top */}
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.title}
+                        className="w-full h-32 object-cover rounded-t-xl"
+                      />
+                    ) : (
+                      <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
+                        <Link className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    {/* Card content for non-highlights */}
+                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
+                      {item.summary && (
+                        <p className="text-muted-foreground text-xs line-clamp-12 mb-1">
+                          {item.summary}
+                        </p>
+                      )}
+                    </div>
+                  </>
                 )}
-
-                {/* Card content */}
-                <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                  <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
-                  {item.type === 'highlight' && item.highlighted_text && (
-                    <blockquote className="border-l-4 border-primary pl-3 my-2 text-base text-muted-foreground line-clamp-3 overflow-hidden flex-shrink-0">
-                      {item.highlighted_text}
-                    </blockquote>
-                  )}
-                  {item.summary && (
-                    <p className="text-muted-foreground text-xs line-clamp-12 mb-1">
-                      {item.summary}
-                    </p>
-                  )}
-                </div>
-
                 {/* Action bar at bottom */}
                 <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
                   <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
@@ -487,6 +504,12 @@ export function App({ userId, filter }: AppProps) {
                     {selectedItem.ai_synopsis_title || selectedItem.title || "Details"}
                   </DialogTitle>
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Show full highlight text if item is a highlight */}
+                    {selectedItem.type === 'highlight' && selectedItem.highlighted_text && (
+                      <blockquote className="border-l-4 border-primary pl-4 my-2 text-base bg-muted/30 rounded">
+                        {selectedItem.highlighted_text}
+                      </blockquote>
+                    )}
                     {/* Summary at the top */}
                     {selectedItem.summary && (
                       <p className="text-muted-foreground text-base font-medium mb-2">{selectedItem.summary}</p>
