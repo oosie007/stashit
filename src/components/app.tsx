@@ -428,7 +428,7 @@ export function App({ userId, filter }: AppProps) {
                     </blockquote>
                   )}
                   {item.summary && (
-                    <p className="text-muted-foreground text-xs line-clamp-2 mb-1">
+                    <p className="text-muted-foreground text-xs line-clamp-12 mb-1">
                       {item.summary}
                     </p>
                   )}
@@ -474,8 +474,16 @@ export function App({ userId, filter }: AppProps) {
             <DialogContent className="max-w-2xl w-full p-0 overflow-hidden flex flex-col">
               {selectedItem && (
                 <div className="flex flex-col h-full max-h-[80vh] relative">
+                  {/* Main image at the top */}
+                  {selectedItem.image_url && (
+                    <img
+                      src={selectedItem.image_url}
+                      alt={selectedItem.title}
+                      className="w-full max-h-64 object-cover rounded-t-lg mb-4"
+                    />
+                  )}
                   {/* DialogTitle for accessibility */}
-                  <DialogTitle className="text-xl font-bold line-clamp-2 px-6 pt-6">
+                  <DialogTitle className="text-xl font-bold px-6 pt-4 pb-2 break-words">
                     {selectedItem.ai_synopsis_title || selectedItem.title || "Details"}
                   </DialogTitle>
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -485,7 +493,12 @@ export function App({ userId, filter }: AppProps) {
                     )}
                     {/* AI Synopsis fields */}
                     {selectedItem.ai_synopsis && (
-                      <div className="space-y-2 border rounded-lg p-4 bg-muted/50">
+                      <div className="space-y-2 border rounded-lg p-4 bg-muted/50 relative">
+                        {/* AI icon at top left */}
+                        <span className="absolute left-3 top-3 text-primary/80">
+                          {/* Using Lucide Sparkles icon for AI flair */}
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414m12.728 0l-1.414-1.414M6.343 6.343L4.929 4.929M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        </span>
                         {selectedItem.ai_synopsis_title && (
                           <div><span className="font-semibold">Title/Author:</span> {selectedItem.ai_synopsis_title}</div>
                         )}
