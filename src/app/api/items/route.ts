@@ -114,15 +114,16 @@ export async function POST(req: Request) {
     // Trigger AI synopsis for links only (not highlights or images)
     if (insertData.type === 'link' && insertedData?.id && insertedData?.url) {
       console.log('🧠 Triggering AI synopsis in background for item:', insertedData.id, insertedData.url);
-      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') 
-        ? 'http://localhost:3000' 
-        : 'https://stashit-nine.vercel.app'}/api/items/ai-synopsis`, {
+      fetch('/api/items/ai-synopsis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: insertedData.url, item_id: insertedData.id })
-      }).then((res) => {
-        console.log('AI synopsis background response:', res.status);
-      }).catch((err) => {
+      })
+      .then(async (res) => {
+        const text = await res.text();
+        console.log('AI synopsis background response:', res.status, text);
+      })
+      .catch((err) => {
         console.error('Error triggering AI synopsis:', err);
       });
     } else {
