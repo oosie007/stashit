@@ -1,13 +1,14 @@
-import { Home, Bookmark, Heart, Highlighter, Image, Menu } from "lucide-react";
+import { Home, Bookmark, Heart, Highlighter, Image, Menu, Plus, FileText } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
   active: string;
   onCategoryChange: (category: string) => void;
+  onAddClick?: () => void;
 }
 
-export function Sidebar({ active, onCategoryChange }: SidebarProps) {
+export function Sidebar({ active, onCategoryChange, onAddClick }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   const items = [
@@ -16,21 +17,33 @@ export function Sidebar({ active, onCategoryChange }: SidebarProps) {
     { icon: <Highlighter />, label: "Highlights", id: "highlights" },
     { icon: <Image />, label: "Stashed Images", id: "images" },
     { icon: <Heart />, label: "Loved", id: "loved" },
+    { icon: <FileText />, label: "Notes", id: "notes" },
     // Add more as needed
   ];
 
   return (
     <div className={`transition-all ${collapsed ? "w-16" : "w-56"} bg-background border-r h-full flex flex-col`}>
-      <div className="flex items-center gap-3 m-2 h-14">
-        <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)}>
-          <Menu />
-        </Button>
-        <img
-          src="/images/logo.png"
-          alt="StashIt Logo"
-          className={`transition-all ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'} h-10`}
-          style={{ maxWidth: collapsed ? 0 : 120 }}
-        />
+      <div className="flex flex-col gap-2 m-2">
+        <div className="flex items-center gap-3 h-14">
+          <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)}>
+            <Menu />
+          </Button>
+          <img
+            src="/images/logo.png"
+            alt="StashIt Logo"
+            className={`transition-all ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'} h-10`}
+            style={{ maxWidth: collapsed ? 0 : 120 }}
+          />
+        </div>
+        {!collapsed && (
+          <Button
+            variant="default"
+            className="bg-black text-white hover:bg-zinc-900 w-full font-semibold"
+            onClick={onAddClick}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add
+          </Button>
+        )}
       </div>
       <nav className="flex-1 flex flex-col gap-2 mt-4">
         {items.map(item => (
