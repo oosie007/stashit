@@ -156,39 +156,81 @@ export async function POST(req: Request) {
           })
         );
       }
-      // ... existing single URL logic ...
+      // Single URL logic: fetch metadata before insert
+      if (!data.url || !data.user_id) {
+        console.error('❌ Missing required fields:', { url: !!data.url, user_id: !!data.user_id });
+        throw new Error('Missing required fields: url and user_id are required');
+      }
+      let meta = { title: '', description: '', image: '' };
+      try {
+        const scraped = await scrapeUrl(data.url);
+        meta = {
+          title: scraped?.title || '',
+          description: scraped?.description || '',
+          image: scraped?.image || ''
+        };
+      } catch (e) {
+        console.warn('Failed to fetch metadata, proceeding with URL as title');
+      }
+      // Ensure title is always a non-empty string
+      const safeTitle = (meta.title && meta.title.trim()) || (data.title && data.title.trim()) || (data.url && data.url.trim()) || 'Untitled';
+      const insertData = {
+        type: data.type || 'link',
+        title: safeTitle,
+        url: data.url,
+        content: data.content,
+        tags: data.tags || [],
+        user_id: data.user_id,
+        image_url: meta.image || data.image_url,
+        summary: meta.description || data.summary,
+        highlighted_text: data.highlighted_text
+      };
+      console.log('Insert data:', insertData);
+      console.log('🔌 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+      console.log('🔑 Service Role Key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+      console.log('💾 Attempting to insert:', JSON.stringify(insertData, null, 2));
+      const { data: insertedData, error: insertError } = await supabase
+        .from('stashed_items')
+        .insert([insertData])
+        .select()
+        .single();
+      if (insertError) {
+        console.error('❌ Insert error:', JSON.stringify(insertError, null, 2));
+        throw insertError;
+      }
+      console.log('✅ Initial save successful:', insertedData);
+      // Trigger AI synopsis for links only (not highlights or images)
+      // if (insertData.type === 'link' && insertedData?.id && insertedData?.url) {
+      //   console.log('🧠 Triggering AI synopsis in background for item:', insertedData.id, insertedData.url);
+      //   const host = req.headers.get('host');
+      //   const protocol = host && host.startsWith('localhost') ? 'http' : 'https';
+      //   const aiSynopsisUrl = `${protocol}://${host}/api/items/ai-synopsis`;
+      //   fetch(aiSynopsisUrl, {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({ url: insertedData.url, item_id: insertedData.id })
+      //   })
+      //   .then(async (res) => {
+      //     const text = await res.text();
+      //     console.log('AI synopsis background response:', res.status, text);
+      //   })
+      //   .catch((err) => {
+      //     console.error('Error triggering AI synopsis:', err);
+      //   });
+      // } else {
+      //   console.log('AI synopsis not triggered: type is not link or missing id/url');
+      // }
+      // TODO: Re-enable AI synopsis background fetch when ready
+      console.log('--- [POST /api/items] End ---');
+      return corsHeaders(
+        NextResponse.json({ 
+          success: true, 
+          message: 'Item saved successfully',
+          data: insertedData
+        })
+      );
     }
 
-    // Existing logic for links
-    if (!data.url || !data.user_id) {
-      console.error('❌ Missing required fields:', { url: !!data.url, user_id: !!data.user_id });
-      throw new Error('Missing required fields: url and user_id are required');
-    }
-    const insertData = {
-      type: data.type || 'link',
-      title: data.title,
-      url: data.url,
-      content: data.content,
-      tags: data.tags || [],
-      user_id: data.user_id,
-      image_url: data.image_url,
-      summary: data.summary,
-      highlighted_text: data.highlighted_text
-    };
-    console.log('Insert data:', insertData);
-    console.log('🔌 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log('🔑 Service Role Key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-    console.log('💾 Attempting to insert:', JSON.stringify(insertData, null, 2));
-    const { data: insertedData, error: insertError } = await supabase
-      .from('stashed_items')
-      .insert([insertData])
-      .select()
-      .single();
-    if (insertError) {
-      console.error('❌ Insert error:', JSON.stringify(insertError, null, 2));
-      throw insertError;
-    }
-    console.log('✅ Initial save successful:', insertedData);
     // Trigger AI synopsis for links only (not highlights or images)
     // if (insertData.type === 'link' && insertedData?.id && insertedData?.url) {
     //   console.log('🧠 Triggering AI synopsis in background for item:', insertedData.id, insertedData.url);
