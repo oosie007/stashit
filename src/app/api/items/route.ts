@@ -125,15 +125,17 @@ export async function POST(req: Request) {
           const created_at = row.created_at;
           try {
             const meta = await scrapeUrl(url);
+            console.log('Batch scraped meta:', meta);
             const insertData = {
               type: 'link',
               title: meta?.title || url,
               url,
               summary: meta?.description || '',
-              image_url: meta?.image || '',
+              image_url: meta?.image || meta?.favicon || row.image_url || null,
               user_id: data.user_id,
               ...(created_at ? { created_at } : {}),
             };
+            console.log('Batch insertData:', insertData);
             const { data: insertedData, error: insertError } = await supabase
               .from('stashed_items')
               .insert([insertData])
@@ -161,14 +163,16 @@ export async function POST(req: Request) {
         console.error('❌ Missing required fields:', { url: !!data.url, user_id: !!data.user_id });
         throw new Error('Missing required fields: url and user_id are required');
       }
-      let meta = { title: '', description: '', image: '' };
+      let meta = { title: '', description: '', image: '', favicon: '' };
       try {
         const scraped = await scrapeUrl(data.url);
         meta = {
           title: scraped?.title || '',
           description: scraped?.description || '',
-          image: scraped?.image || ''
+          image: scraped?.image || '',
+          favicon: scraped?.favicon || ''
         };
+        console.log('Single scraped meta:', meta);
       } catch (e) {
         console.warn('Failed to fetch metadata, proceeding with URL as title');
       }
@@ -181,11 +185,11 @@ export async function POST(req: Request) {
         content: data.content,
         tags: data.tags || [],
         user_id: data.user_id,
-        image_url: meta.image || data.image_url,
+        image_url: meta.image || meta.favicon || data.image_url || null,
         summary: meta.description || data.summary,
         highlighted_text: data.highlighted_text
       };
-      console.log('Insert data:', insertData);
+      console.log('Single insertData:', insertData);
       console.log('🔌 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
       console.log('🔑 Service Role Key exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
       console.log('💾 Attempting to insert:', JSON.stringify(insertData, null, 2));
