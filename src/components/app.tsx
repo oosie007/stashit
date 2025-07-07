@@ -259,6 +259,11 @@ export function App({ userId, filter }: AppProps) {
     return matchesSearch && matchesCategory
   })
 
+  // Deduplicate filteredItems before rendering
+  const dedupedItems = Array.from(
+    new Map(filteredItems.map(item => [item.id + '-' + item.url, item])).values()
+  );
+
   async function toggleFavorite(item: StashedItem) {
     try {
       const newLovedStatus = !item.is_loved
@@ -334,15 +339,17 @@ export function App({ userId, filter }: AppProps) {
   }
 
   const renderListView = () => {
+    const listKeys = dedupedItems.map(item => item.id + '-' + item.url);
+    console.log('List keys:', listKeys);
     return (
       <div className="flex h-[calc(100vh-4rem)]">
         {/* List of items */}
         <div className="w-1/2 border-r">
           <ScrollArea className="h-full">
             <div className="space-y-2 p-4">
-              {filteredItems.map((item) => (
+              {dedupedItems.map((item) => (
                 <div
-                  key={item.id}
+                  key={item.id + '-' + item.url}
                   className={`p-4 rounded-lg border cursor-pointer transition-colors ${
                     selectedListItem?.id === item.id 
                       ? 'bg-primary/5 border-primary/20' 
@@ -517,6 +524,10 @@ export function App({ userId, filter }: AppProps) {
     )
   }
 
+  // Before rendering card grid
+  const cardKeys = dedupedItems.map(item => item.id + '-' + item.url);
+  console.log('Card keys:', cardKeys);
+
   return (
     <div className="flex h-screen">
       <Sidebar active={activeCategory} onCategoryChange={(cat) => setActiveCategory(cat as CategoryType)} onAddClick={() => setShowAddModal(true)} />
@@ -569,9 +580,9 @@ export function App({ userId, filter }: AppProps) {
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto h-full" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6 min-h-[80vh]">
-            {filteredItems.map((item) => (
+            {dedupedItems.map((item) => (
               <Card 
-                key={item.id}
+                key={item.id + '-' + item.url}
                 className={`flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative ${item.type === 'note' ? 'border-accent bg-accent/50 text-accent-foreground' : ''}`}
                 onClick={() => setSelectedItem(item)}
               >
@@ -669,6 +680,136 @@ export function App({ userId, filter }: AppProps) {
           {/* Observer div for infinite scroll - must be outside the grid */}
           <div ref={observerRef} className="h-8"></div>
           {loadingMore && <div className="text-center py-4 text-muted-foreground">Loading more...</div>}
+
+          {/* Detail Modal for selected item */}
+          <Dialog open={!!selectedItem} onOpenChange={open => { if (!open) { setSelectedItem(null); setEditMode(false); } }}>
+            <DialogContent className="max-w-3xl w-full p-0 overflow-hidden flex flex-col">
+              {selectedItem && (
+                <div className="flex flex-col h-full max-h-[80vh] relative">
+                  {/* Main image at the top */}
+                  {selectedItem.image_url && (
+                    <img
+                      src={selectedItem.image_url}
+                      alt={selectedItem.title}
+                      className="w-full max-h-64 object-cover rounded-t-lg mb-4"
+                    />
+                  )}
+                  {/* DialogTitle for accessibility */}
+                  <DialogTitle className="text-xl font-bold px-6 pt-4 pb-2 break-words flex items-center gap-2">
+                    {selectedItem.type === 'note' && <FileText className="h-5 w-5 text-accent-foreground" />}
+                    {editMode ? (
+                      <Input
+                        className="text-xl font-bold px-0 py-1 border-none bg-transparent focus:ring-0 focus-visible:ring-0"
+                        value={editTitle}
+                        onChange={e => setEditTitle(e.target.value)}
+                        placeholder="Note title"
+                        autoFocus
+                      />
+                    ) : (
+                      selectedItem.ai_synopsis_title || selectedItem.title || "Details"
+                    )}
+                    {/* Edit icon for notes */}
+                    {selectedItem.type === 'note' && !editMode && (
+                      <Button variant="ghost" size="icon" className="ml-2" onClick={handleEditNote}>
+                        <PenLine className="h-5 w-5 text-muted-foreground" />
+                      </Button>
+                    )}
+                  </DialogTitle>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                    {/* Show full note content if item is a note */}
+                    {selectedItem.type === 'note' && (
+                      editMode ? (
+                        <div className="border rounded-md overflow-hidden bg-background">
+                          <MDEditor value={editContent} onChange={v => setEditContent(v || '')} height={350} previewOptions={{ className: 'text-sm text-muted-foreground' }} />
+                        </div>
+                      ) : (
+                        <MarkdownPreview source={selectedItem.content || ''} className="markdown-preview bg-transparent" style={{ background: 'transparent' }} />
+                      )
+                    )}
+                    {/* Show full highlight text if item is a highlight */}
+                    {selectedItem.type === 'highlight' && selectedItem.highlighted_text && (
+                      <blockquote className="border-l-4 border-primary pl-4 my-2 text-base bg-muted/30 rounded">
+                        {selectedItem.highlighted_text}
+                      </blockquote>
+                    )}
+                    {/* Summary at the top */}
+                    {selectedItem.summary && (
+                      <p className="text-muted-foreground text-base font-medium mb-2">{selectedItem.summary}</p>
+                    )}
+                    {/* AI Synopsis fields */}
+                    {selectedItem.ai_synopsis && (
+                      <div className="space-y-2 border rounded-lg p-4 bg-muted/50 relative">
+                        {/* AI icon at top left */}
+                        <span className="absolute left-3 top-3 text-primary/80">
+                          {/* Using Lucide Sparkles icon for AI flair */}
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414m12.728 0l-1.414-1.414M6.343 6.343L4.929 4.929M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        </span>
+                        {selectedItem.ai_synopsis_title && (
+                          <div><span className="font-semibold">Title/Author:</span> {selectedItem.ai_synopsis_title}</div>
+                        )}
+                        {selectedItem.ai_synopsis_purpose && (
+                          <div><span className="font-semibold">Purpose:</span> {selectedItem.ai_synopsis_purpose}</div>
+                        )}
+                        {selectedItem.ai_synopsis_structure && (
+                          <div><span className="font-semibold">Structure:</span> {selectedItem.ai_synopsis_structure}</div>
+                        )}
+                        {selectedItem.ai_synopsis_key_points && (
+                          <div><span className="font-semibold">Key Points:</span> {selectedItem.ai_synopsis_key_points}</div>
+                        )}
+                        {selectedItem.ai_synopsis_takeaways && (
+                          <div><span className="font-semibold">Takeaways:</span> {selectedItem.ai_synopsis_takeaways}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Fixed action bar at the bottom */}
+                  <div className="flex items-center justify-between border-t px-6 py-3 bg-background sticky bottom-0 z-10">
+                    <span className="text-xs text-muted-foreground">{formatDate(selectedItem.created_at)}</span>
+                    <div className="flex items-center gap-2">
+                      {editMode && selectedItem.type === 'note' ? (
+                        <>
+                          <Button onClick={() => setEditMode(false)} variant="ghost" disabled={editLoading}>Cancel</Button>
+                          <Button onClick={handleSaveEditNote} disabled={editLoading} className="bg-black text-white hover:bg-zinc-900">
+                            {editLoading ? 'Saving...' : 'Save'}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={e => { e.stopPropagation(); toggleFavorite(selectedItem); }}
+                          >
+                            <Heart className={`h-4 w-4 ${selectedItem.is_loved ? 'fill-current text-red-500' : ''}`} />
+                          </Button>
+                          {selectedItem.type !== 'note' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={e => {
+                                e.stopPropagation();
+                                window.open(selectedItem.url, "_blank", "noopener,noreferrer");
+                              }}
+                              aria-label="Open link in new tab"
+                            >
+                              <Link className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={e => { e.stopPropagation(); deleteItem(selectedItem.id); setSelectedItem(null); }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
