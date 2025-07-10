@@ -544,7 +544,14 @@ export function App({ userId, filter }: AppProps) {
     <div className="flex h-screen">
       {/* Sidebar: hidden on mobile, visible on md+ */}
       <div className="hidden md:block h-full">
-        <Sidebar active={activeCategory} onCategoryChange={(cat) => setActiveCategory(cat as CategoryType)} onAddClick={() => setShowAddModal(true)} />
+        <Sidebar
+          active={activeCategory}
+          onCategoryChange={(cat) => setActiveCategory(cat as CategoryType)}
+          onAddClick={() => setShowAddModal(true)}
+          email={userEmail}
+          avatarUrl={user?.user_metadata?.avatar_url}
+          name={user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email}
+        />
       </div>
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -561,7 +568,14 @@ export function App({ userId, filter }: AppProps) {
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-64 max-w-full">
                 <SheetTitle className="sr-only">Sidebar Navigation</SheetTitle>
-                <Sidebar active={activeCategory} onCategoryChange={(cat) => { setActiveCategory(cat as CategoryType); setIsMobileSidebarOpen(false); }} onAddClick={() => { setShowAddModal(true); setIsMobileSidebarOpen(false); }} />
+                <Sidebar
+                  active={activeCategory}
+                  onCategoryChange={(cat) => { setActiveCategory(cat as CategoryType); setIsMobileSidebarOpen(false); }}
+                  onAddClick={() => { setShowAddModal(true); setIsMobileSidebarOpen(false); }}
+                  email={userEmail}
+                  avatarUrl={user?.user_metadata?.avatar_url}
+                  name={user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email}
+                />
               </SheetContent>
             </Sheet>
             {/* Logo center (mobile only) */}
@@ -618,7 +632,6 @@ export function App({ userId, filter }: AppProps) {
             {/* User menu right-aligned */}
             <div className="flex items-center gap-2 ml-4">
               <ModeToggle />
-              <UserMenu email={userEmail} />
             </div>
           </div>
         </header>

@@ -1,14 +1,18 @@
 import { Home, Bookmark, Heart, Highlighter, Image, Menu, Plus, FileText } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import UserMenu from "@/components/user-menu";
 
 interface SidebarProps {
   active: string;
   onCategoryChange: (category: string) => void;
   onAddClick?: () => void;
+  email?: string;
+  avatarUrl?: string;
+  name?: string;
 }
 
-export function Sidebar({ active, onCategoryChange, onAddClick }: SidebarProps) {
+export function Sidebar({ active, onCategoryChange, onAddClick, email, avatarUrl, name }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   const items = [
@@ -59,6 +63,12 @@ export function Sidebar({ active, onCategoryChange, onAddClick }: SidebarProps) 
           </Button>
         ))}
       </nav>
+      {/* Sticky footer for user profile */}
+      {!collapsed && (
+        <div className="sticky bottom-0 w-full bg-background border-t px-4 py-3 z-10">
+          <UserMenu email={email || ''} avatarUrl={avatarUrl} name={name} />
+        </div>
+      )}
     </div>
   );
 } 
