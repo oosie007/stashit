@@ -28,10 +28,11 @@ export function Sidebar({ active, onCategoryChange, onAddClick }: SidebarProps) 
           <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)}>
             <Menu />
           </Button>
+          {/* Logo only on desktop sidebar */}
           <img
             src="/images/logo.png"
             alt="StashIt Logo"
-            className={`transition-all ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'} h-10`}
+            className={`transition-all ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'} h-10 hidden md:block`}
             style={{ maxWidth: collapsed ? 0 : 120 }}
           />
         </div>

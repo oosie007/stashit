@@ -59,6 +59,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -79,6 +80,8 @@ import { Sidebar } from '@/components/Sidebar'
 import dynamic from 'next/dynamic'
 import { AddItemModal } from './add-item-modal'
 import MarkdownPreview from '@uiw/react-markdown-preview'
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Search } from "lucide-react"
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
 
 export interface StashedItem {
@@ -152,6 +155,15 @@ export function App({ userId, filter }: AppProps) {
   const [editLoading, setEditLoading] = useState(false);
   const observerRef = useRef<HTMLDivElement | null>(null);
   const [sortDesc, setSortDesc] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showMobileSearchBar, setShowMobileSearchBar] = useState(false);
+
+  // Debug: log when popover opens/closes
+  function handleMobileSearchOpenChange(open: boolean) {
+    console.log('Mobile search popover open:', open);
+    setShowMobileSearch(open);
+  }
 
   useEffect(() => {
     fetchItems({ reset: true, offset: 0, sort: sortDesc });
@@ -530,18 +542,54 @@ export function App({ userId, filter }: AppProps) {
 
   return (
     <div className="flex h-screen">
-      <Sidebar active={activeCategory} onCategoryChange={(cat) => setActiveCategory(cat as CategoryType)} onAddClick={() => setShowAddModal(true)} />
+      {/* Sidebar: hidden on mobile, visible on md+ */}
+      <div className="hidden md:block h-full">
+        <Sidebar active={activeCategory} onCategoryChange={(cat) => setActiveCategory(cat as CategoryType)} onAddClick={() => setShowAddModal(true)} />
+      </div>
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <header className="border-b p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 flex gap-2 items-center">
+        <header className="border-b p-4 flex items-center justify-between relative">
+          {/* Mobile: Three-column flex layout */}
+          <div className="flex w-full items-center md:hidden">
+            {/* Hamburger left */}
+            <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileSidebarOpen(true)} aria-label="Open menu">
+                  <Menu />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-64 max-w-full">
+                <SheetTitle className="sr-only">Sidebar Navigation</SheetTitle>
+                <Sidebar active={activeCategory} onCategoryChange={(cat) => { setActiveCategory(cat as CategoryType); setIsMobileSidebarOpen(false); }} onAddClick={() => { setShowAddModal(true); setIsMobileSidebarOpen(false); }} />
+              </SheetContent>
+            </Sheet>
+            {/* Logo center (mobile only) */}
+            <div className="flex-1 flex justify-center">
+              <img src="/images/logo.png" alt="StashIt Logo" className="h-14 w-auto" />
+            </div>
+            {/* Search icon right */}
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Search"
+                onClick={() => setShowMobileSearchBar((v) => !v)}
+              >
+                <Search />
+              </Button>
+            </div>
+          </div>
+          {/* Desktop header layout */}
+          <div className="hidden md:flex flex-1 items-center md:ml-4 gap-6">
+            {/* Search bar and filters (centered, wide) */}
+            <div className="flex-1 flex gap-2 items-center justify-center max-w-4xl mx-auto">
               <Input
                 type="search"
                 placeholder="Search stashed items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-base px-4 py-2"
               />
               <div className="flex gap-1 ml-2">
                 {filterOptions.map(opt => (
@@ -567,23 +615,37 @@ export function App({ userId, filter }: AppProps) {
                 </Button>
               </div>
             </div>
+            {/* User menu right-aligned */}
             <div className="flex items-center gap-2 ml-4">
               <ModeToggle />
               <UserMenu email={userEmail} />
             </div>
           </div>
         </header>
-
+        {/* Mobile accordion search bar row */}
+        <div
+          className={
+            `md:hidden transition-all duration-300 overflow-hidden bg-background px-4 ${showMobileSearchBar ? 'max-h-20 py-3' : 'max-h-0 py-0'}`
+          }
+        >
+          <Input
+            type="search"
+            placeholder="Search stashed items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus={showMobileSearchBar}
+            className="w-full"
+          />
+        </div>
         {/* Add Modal */}
         <AddItemModal open={showAddModal} onOpenChange={setShowAddModal} onSave={handleAddItem} loading={addLoading} />
-
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto h-full" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6 min-h-[80vh]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 md:p-6 min-h-[80vh]">
             {dedupedItems.map((item) => (
               <Card 
                 key={item.id + '-' + item.url}
-                className={`flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative ${item.type === 'note' ? 'border-accent bg-accent/50 text-accent-foreground' : ''}`}
+                className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
                 onClick={() => setSelectedItem(item)}
               >
                 {/* Card content for notes */}
@@ -811,6 +873,22 @@ export function App({ userId, filter }: AppProps) {
             </DialogContent>
           </Dialog>
         </main>
+        {/* Mobile filter/action bar fixed to bottom */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t flex justify-around items-center h-16 shadow-lg">
+          {filterOptions.map(opt => (
+            <Button
+              key={opt.id}
+              variant={activeCategory === opt.id ? 'secondary' : 'ghost'}
+              size="icon"
+              className="flex flex-col items-center justify-center rounded-full"
+              onClick={() => setActiveCategory(opt.id)}
+              aria-label={opt.label}
+            >
+              {opt.icon}
+              <span className="text-[10px] mt-1">{opt.label}</span>
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   )

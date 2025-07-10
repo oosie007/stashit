@@ -164,8 +164,8 @@ export function AddItemModal({ open, onOpenChange, onSave, loading }: AddItemMod
                     {csvRows.length > 0 && (
                       <div className="text-xs text-muted-foreground mt-2 max-h-32 overflow-auto border rounded p-2 bg-muted/30">
                         <div>Preview ({csvRows.length} URLs):</div>
-                        {csvRows.slice(0, 10).map((row, i) => (
-                          <div key={i}>{row.url} {row.created_at && <span className="ml-2 text-muted-foreground">({row.created_at})</span>}</div>
+                        {csvRows.slice(0, 10).map((row) => (
+                          <div key={row.url + (row.created_at || '')}>{row.url} {row.created_at && <span className="ml-2 text-muted-foreground">({row.created_at})</span>}</div>
                         ))}
                         {csvRows.length > 10 && <div>...and {csvRows.length - 10} more</div>}
                       </div>
