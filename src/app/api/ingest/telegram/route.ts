@@ -1,35 +1,45 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getUserIdByTelegramId } from '@/lib/supabase/telegram'
+import { scrapeUrl } from '@/lib/utils';
 
 export async function POST(req: Request) {
   try {
     const data = await req.json()
-    const { type, content, file_url, url, telegram_user_id, file_name } = data
-    if (!telegram_user_id || !type) {
-      return NextResponse.json({ success: false, error: 'Missing telegram_user_id or type' }, { status: 400 })
+    const { content, file_url, url, telegram_user_id, file_name } = data
+    if (!telegram_user_id) {
+      return NextResponse.json({ success: false, error: 'Missing telegram_user_id' }, { status: 400 })
     }
     // 1. Lookup stashit user_id from telegram_user_id
     const user_id = await getUserIdByTelegramId(telegram_user_id)
     if (!user_id) {
       return NextResponse.json({ success: false, error: 'Telegram user not linked to StashIt account' }, { status: 401 })
     }
-    // 2. Build insert data based on type
-    let insertData: any = { user_id, type }
-    if (type === 'note') {
-      if (!content) return NextResponse.json({ success: false, error: 'Missing content for note' }, { status: 400 })
-      insertData.content = content
-      insertData.title = content.slice(0, 60) // Use first 60 chars as title
-    } else if (type === 'link') {
-      if (!url) return NextResponse.json({ success: false, error: 'Missing url for link' }, { status: 400 })
-      insertData.url = url
-      insertData.title = url
-    } else if (type === 'image' || type === 'document') {
-      if (!file_url) return NextResponse.json({ success: false, error: 'Missing file_url' }, { status: 400 })
+    // 2. Detect if content or url contains a link
+    let insertData: any = { user_id }
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    let detectedUrl = url || (typeof content === 'string' && content.match(urlRegex)?.[0])
+    if (file_url) {
+      // Handle image or document
+      insertData.type = 'image'
       insertData.image_url = file_url
-      if (type === 'document') insertData.title = file_name || 'Document'
+      if (file_name) insertData.title = file_name
+    } else if (detectedUrl) {
+      // Handle link: enrich and save
+      const meta = await scrapeUrl(detectedUrl)
+      insertData.type = 'link'
+      insertData.url = detectedUrl
+      insertData.title = meta?.title || detectedUrl
+      insertData.summary = meta?.description || ''
+      insertData.image_url = meta?.image || meta?.favicon || null
+      insertData.content = content // Optionally save original message
+    } else if (content) {
+      // Fallback: save as note
+      insertData.type = 'note'
+      insertData.content = content
+      insertData.title = content.slice(0, 60)
     } else {
-      return NextResponse.json({ success: false, error: 'Unsupported type' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'No content or file to save' }, { status: 400 })
     }
     // 3. Insert into stashed_items
     const { data: inserted, error } = await supabase.from('stashed_items').insert([insertData]).select().single()
