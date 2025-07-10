@@ -634,13 +634,13 @@ export function App({ userId, filter }: AppProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoFocus={showMobileSearchBar}
-            className="w-full"
+            className="w-full text-base"
           />
         </div>
         {/* Add Modal */}
         <AddItemModal open={showAddModal} onOpenChange={setShowAddModal} onSave={handleAddItem} loading={addLoading} />
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto h-full" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
+        <main className="flex-1 overflow-y-auto h-full px-4 md:px-0" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 md:p-6 min-h-[80vh]">
             {dedupedItems.map((item) => (
               <Card 
