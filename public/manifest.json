@@ -1,0 +1,37 @@
+{
+  "name": "StashIt",
+  "short_name": "StashIt",
+  "description": "Save and organize your favorite links, notes, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "stashit-icons/android/ic_launcher-web.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "stashit-icons/ios/AppIcon.appiconset/Icon-App-60x60@3x.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "stashit-icons/ios/AppIcon.appiconset/Icon-App-76x76@2x.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "stashit-icons/ios/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png",
+      "sizes": "167x167",
+      "type": "image/png"
+    },
+    {
+      "src": "stashit-icons/ios/AppIcon.appiconset/Icon-App-1024x1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+} 
