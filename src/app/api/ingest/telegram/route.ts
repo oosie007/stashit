@@ -48,7 +48,9 @@ export async function POST(req: Request) {
       // For images, also set image_url for legacy UI
       if (type === 'image') insertData.image_url = file_url
       // For documents, set title to file_name
-      if (type === 'document' && file_name) insertData.title = file_name
+      if (['document', 'audio', 'image', 'video'].includes(type)) {
+        insertData.title = file_name || type || 'Untitled';
+      }
     } else if (detectedUrl) {
       // Handle link: enrich and save
       const meta = await scrapeUrl(detectedUrl)
@@ -65,6 +67,10 @@ export async function POST(req: Request) {
       insertData.title = content.slice(0, 60)
     } else {
       return NextResponse.json({ success: false, error: 'No content or file to save' }, { status: 400 })
+    }
+    // Ensure title is always set
+    if (!insertData.title) {
+      insertData.title = file_name || insertData.type || 'Untitled';
     }
     // 3. Insert into stashed_items
     const { data: inserted, error } = await supabase.from('stashed_items').insert([insertData]).select().single()
