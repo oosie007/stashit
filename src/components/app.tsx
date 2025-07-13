@@ -665,87 +665,51 @@ export function App({ userId, filter }: AppProps) {
                 className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
                 onClick={() => setSelectedItem(item)}
               >
-                {/* Card content for notes */}
-                {item.type === 'note' ? (
-                  <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="h-5 w-5 text-accent-foreground" />
-                      <h2 className="text-base font-semibold line-clamp-1">{item.title}</h2>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <MarkdownPreview source={item.content || ''} className="markdown-preview line-clamp-8 text-sm text-muted-foreground bg-transparent" style={{ background: 'transparent' }} />
-                    </div>
-                  </div>
-                ) : item.type === 'image' && item.image_url ? (
-                  <>
-                    <img
-                      src={item.image_url}
-                      alt={item.title}
-                      className="w-full h-32 object-cover rounded-t-xl"
-                    />
-                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
-                      {item.summary && (
-                        <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
-                          {item.summary}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                ) : item.type === 'document' && item.document_url ? (
-                  <>
-                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
-                      <FileText className="h-8 w-8 text-muted-foreground mr-2" />
-                      <a
-                        href={item.document_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline text-sm"
-                        download={item.file_name || true}
-                      >
-                        {item.file_name || 'Download document'}
-                      </a>
-                    </div>
-                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.file_name || item.title}</h2>
-                      {item.summary && (
-                        <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
-                          {item.summary}
-                        </p>
-                      )}
-                    </div>
-                  </>
+                {/* Card preview by type */}
+                {item.type === 'image' && item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.file_name || 'Photo'}
+                    className="w-full h-48 object-cover rounded-t-xl bg-muted"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
                 ) : item.type === 'audio' && item.audio_url ? (
-                  <>
-                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
-                      <audio controls src={item.audio_url} className="w-full">
-                        Your browser does not support the audio element.
-                      </audio>
-                    </div>
-                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.file_name || item.title}</h2>
-                      {item.summary && (
-                        <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
-                          {item.summary}
-                        </p>
-                      )}
-                    </div>
-                  </>
+                  <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+                    <audio controls src={item.audio_url} className="w-full max-w-xs" />
+                  </div>
+                ) : item.type === 'document' && item.document_url ? (
+                  <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
+                    <FileText className="h-10 w-10 text-muted-foreground mb-2" />
+                    <a
+                      href={item.document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline text-sm text-center break-all"
+                      download={item.file_name || true}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {item.file_name || 'Download document'}
+                    </a>
+                  </div>
                 ) : (
-                  <>
-                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
-                      <Link className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
-                      {item.summary && (
-                        <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
-                          {item.summary}
-                        </p>
-                      )}
-                    </div>
-                  </>
+                  <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+                    <FileText className="h-10 w-10 text-muted-foreground" />
+                  </div>
                 )}
+                {/* Card content */}
+                <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                  <h2 className="text-base font-semibold mb-1 line-clamp-1">
+                    {item.type === 'image' ? 'Photo' :
+                     item.type === 'audio' ? 'Audio' :
+                     item.type === 'document' ? (item.file_name || 'Document') :
+                     item.title}
+                  </h2>
+                  {item.summary && (
+                    <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
+                      {item.summary}
+                    </p>
+                  )}
+                </div>
                 {/* Action bar at bottom */}
                 <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
                   <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
@@ -757,7 +721,7 @@ export function App({ userId, filter }: AppProps) {
                     >
                       <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
                     </Button>
-                    {item.type !== 'note' && (
+                    {item.type !== 'note' && item.url && (
                       <Button
                         variant="ghost"
                         size="icon"
