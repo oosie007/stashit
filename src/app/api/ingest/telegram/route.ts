@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getUserIdByTelegramId } from '@/lib/supabase/telegram'
 import { scrapeUrl } from '@/lib/utils'; 
-
+ 
 function detectFileType(fileName: string = '', mimeType: string = ''): { type: string } {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   if (mimeType.startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
