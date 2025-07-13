@@ -268,16 +268,24 @@ function StashCard({ item, onSelect, onToggleFavorite, onDelete }: {
       {cardPreview}
       {/* Card content */}
       <div className="flex-1 flex flex-col p-4 overflow-hidden">
-        <h2 className="text-base font-semibold mb-1 line-clamp-1">
-          {item.type === 'image' ? 'Photo' :
-           item.type === 'audio' ? 'Audio' :
-           item.type === 'document' ? (item.file_name || 'Document') :
-           item.title}
-        </h2>
+        {item.type === 'link' && item.title && (
+          <div className="mb-1">
+            <span className="block font-bold text-base leading-tight mb-1">{item.title}</span>
+          </div>
+        )}
         {item.summary && (
           <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
             {item.summary}
           </p>
+        )}
+        {/* fallback for other types */}
+        {item.type !== 'link' && (
+          <h2 className="text-base font-semibold mb-1 line-clamp-1">
+            {item.type === 'image' ? 'Photo' :
+             item.type === 'audio' ? 'Audio' :
+             item.type === 'document' ? (item.file_name || 'Document') :
+             item.title}
+          </h2>
         )}
       </div>
       {/* Action bar at bottom */}
