@@ -194,21 +194,41 @@ function StashCard({ item, onSelect, onToggleFavorite, onDelete }: {
       </div>
     );
   } else if (isFile && fileType === 'document' && signedUrl) {
-    cardPreview = (
-      <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
-        <FileText className="h-10 w-10 text-muted-foreground mb-2" />
-        <a
-          href={signedUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary underline text-sm text-center break-all"
-          download={item.file_name || true}
-          onClick={e => e.stopPropagation()}
-        >
-          {item.file_name || 'Download document'}
-        </a>
-      </div>
-    );
+    // PDF preview
+    if (item.file_name?.toLowerCase().endsWith('.pdf')) {
+      cardPreview = (
+        <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
+          <embed src={signedUrl + '#page=1&zoom=50'} type="application/pdf" width="100%" height="100" />
+          <a
+            href={signedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline text-sm text-center break-all mt-2"
+            download={item.file_name || true}
+            onClick={e => e.stopPropagation()}
+          >
+            {item.file_name || 'Download document'}
+          </a>
+        </div>
+      );
+    } else {
+      // Fallback for other docs
+      cardPreview = (
+        <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
+          <FileText className="h-10 w-10 text-muted-foreground mb-2" />
+          <a
+            href={signedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline text-sm text-center break-all"
+            download={item.file_name || true}
+            onClick={e => e.stopPropagation()}
+          >
+            {item.file_name || 'Download document'}
+          </a>
+        </div>
+      );
+    }
   } else if (isFile && fileType === 'video' && signedUrl) {
     cardPreview = (
       <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
