@@ -1,8 +1,7 @@
 // components/app.tsx 
 'use client'
 
-import React from 'react'
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -108,6 +107,7 @@ export interface StashedItem {
   ai_synopsis_key_points?: string
   ai_synopsis_takeaways?: string
   content?: string
+  file_path?: string // Added file_path to StashedItem interface
 }
 
 type LayoutType = 'card' | 'list'
@@ -132,6 +132,26 @@ const filterOptions: { id: CategoryType, icon: React.ReactNode, label: string }[
   { id: 'images', icon: <Image />, label: 'Images' },
   { id: 'loved', icon: <Heart />, label: 'Loved' },
 ];
+
+function useSignedUrl(filePath?: string) {
+  const [url, setUrl] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!filePath) return;
+    let cancelled = false;
+    const fetchSignedUrl = async () => {
+      const res = await fetch('/api/files/signed-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_path: filePath }),
+      });
+      const { signedUrl } = await res.json();
+      if (!cancelled) setUrl(signedUrl);
+    };
+    fetchSignedUrl();
+    return () => { cancelled = true; };
+  }, [filePath]);
+  return url;
+}
 
 export function App({ userId, filter }: AppProps) {
   const [items, setItems] = useState<StashedItem[]>([])
@@ -659,92 +679,96 @@ export function App({ userId, filter }: AppProps) {
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto h-full px-4 md:px-0" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 md:p-6 min-h-[80vh]">
-            {dedupedItems.map((item) => (
-              <Card 
-                key={item.id + '-' + item.url}
-                className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
-                onClick={() => setSelectedItem(item)}
-              >
-                {/* Card preview by type */}
-                {item.type === 'image' && item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={item.file_name || 'Photo'}
-                    className="w-full h-48 object-cover rounded-t-xl bg-muted"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : item.type === 'audio' && item.audio_url ? (
-                  <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
-                    <audio controls src={item.audio_url} className="w-full max-w-xs" />
-                  </div>
-                ) : item.type === 'document' && item.document_url ? (
-                  <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
-                    <FileText className="h-10 w-10 text-muted-foreground mb-2" />
-                    <a
-                      href={item.document_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline text-sm text-center break-all"
-                      download={item.file_name || true}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {item.file_name || 'Download document'}
-                    </a>
-                  </div>
-                ) : (
-                  <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
-                    <FileText className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                )}
-                {/* Card content */}
-                <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                  <h2 className="text-base font-semibold mb-1 line-clamp-1">
-                    {item.type === 'image' ? 'Photo' :
-                     item.type === 'audio' ? 'Audio' :
-                     item.type === 'document' ? (item.file_name || 'Document') :
-                     item.title}
-                  </h2>
-                  {item.summary && (
-                    <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
-                      {item.summary}
-                    </p>
+            {dedupedItems.map((item) => {
+              // Always use file_path to get a signed URL
+              const signedUrl = useSignedUrl(item.file_path);
+
+              return (
+                <Card 
+                  key={item.id + '-' + item.url}
+                  className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
+                  onClick={() => setSelectedItem(item)}
+                >
+                  {/* Card preview by type */}
+                  {item.type === 'image' && signedUrl ? (
+                    <img
+                      src={signedUrl}
+                      alt={item.file_name || 'Photo'}
+                      className="w-full h-48 object-cover rounded-t-xl bg-muted"
+                    />
+                  ) : item.type === 'audio' && signedUrl ? (
+                    <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+                      <audio controls src={signedUrl} className="w-full max-w-xs" />
+                    </div>
+                  ) : item.type === 'document' && signedUrl ? (
+                    <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
+                      <FileText className="h-10 w-10 text-muted-foreground mb-2" />
+                      <a
+                        href={signedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline text-sm text-center break-all"
+                        download={item.file_name || true}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {item.file_name || 'Download document'}
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+                      <FileText className="h-10 w-10 text-muted-foreground" />
+                    </div>
                   )}
-                </div>
-                {/* Action bar at bottom */}
-                <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
-                  <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={e => { e.stopPropagation(); toggleFavorite(item); }}
-                    >
-                      <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
-                    </Button>
-                    {item.type !== 'note' && item.url && (
+                  {/* Card content */}
+                  <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                    <h2 className="text-base font-semibold mb-1 line-clamp-1">
+                      {item.type === 'image' ? 'Photo' :
+                       item.type === 'audio' ? 'Audio' :
+                       item.type === 'document' ? (item.file_name || 'Document') :
+                       item.title}
+                    </h2>
+                    {item.summary && (
+                      <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
+                        {item.summary}
+                      </p>
+                    )}
+                  </div>
+                  {/* Action bar at bottom */}
+                  <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
+                    <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={e => {
-                          e.stopPropagation();
-                          window.open(item.url, "_blank", "noopener,noreferrer");
-                        }}
-                        aria-label="Open link in new tab"
+                        onClick={e => { e.stopPropagation(); toggleFavorite(item); }}
                       >
-                        <Link className="h-4 w-4" />
+                        <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={e => { e.stopPropagation(); deleteItem(item.id); }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      {item.type !== 'note' && item.url && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={e => {
+                            e.stopPropagation();
+                            window.open(item.url, "_blank", "noopener,noreferrer");
+                          }}
+                          aria-label="Open link in new tab"
+                        >
+                          <Link className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={e => { e.stopPropagation(); deleteItem(item.id); }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
           {/* Observer div for infinite scroll - must be outside the grid */}
           <div ref={observerRef} className="h-8"></div>
