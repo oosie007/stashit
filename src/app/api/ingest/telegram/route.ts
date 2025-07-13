@@ -85,14 +85,20 @@ export async function POST(req: Request) {
       if (thumbApi) {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+          console.log(`[Thumbnail] Calling ${baseUrl + thumbApi} for file_path: ${file_path}, bucket: stashit-bucket`);
           const thumbRes = await fetch(baseUrl + thumbApi, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ file_path, bucket: 'stashit-bucket' }),
           });
-          const { thumbnail_url } = await thumbRes.json();
+          const thumbJson = await thumbRes.json();
+          console.log('[Thumbnail] Response:', thumbJson);
+          const { thumbnail_url } = thumbJson;
           if (thumbnail_url) {
-            await supabase.from('stashed_items').update({ thumbnail_url }).eq('id', inserted.id);
+            const updateRes = await supabase.from('stashed_items').update({ thumbnail_url }).eq('id', inserted.id);
+            console.log('[Thumbnail] Updated stashed_items with thumbnail_url:', updateRes);
+          } else {
+            console.error('[Thumbnail] No thumbnail_url returned');
           }
         } catch (err) {
           console.error('Thumbnail generation failed:', err);
