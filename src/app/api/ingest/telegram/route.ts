@@ -74,6 +74,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
+    // Debug: log before thumbnail generation condition
+    console.log('[Thumbnail] Pre-condition:', { file_path, inserted, type: insertData.type, file_name });
     // Generate and save thumbnail for PDF or video
     if (file_path && inserted && (insertData.type === 'document' || insertData.type === 'video')) {
       let thumbApi = null;
