@@ -54,6 +54,7 @@ export async function POST(req: Request) {
       insertData.url = detectedUrl
       insertData.title = meta?.title || detectedUrl
       insertData.summary = meta?.description || ''
+      insertData.image_url = meta?.image || meta?.favicon || null;
       insertData.content = content // Optionally save original message
     } else if (content) {
       // Fallback: save as note
