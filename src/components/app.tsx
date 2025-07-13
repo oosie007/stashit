@@ -88,7 +88,7 @@ export interface StashedItem {
   user_id: string
   title: string
   url: string
-  type: 'link' | 'highlight' | 'image' | 'saved_image' | 'note' | 'document' | 'audio'
+  type: 'link' | 'highlight' | 'image' | 'saved_image' | 'note' | 'document' | 'audio' | 'video'
   summary?: string
   highlighted_text?: string
   is_loved: boolean
@@ -151,6 +151,13 @@ function useSignedUrl(filePath?: string) {
     return () => { cancelled = true; };
   }, [filePath]);
   return url;
+}
+
+function getFileTypeAndPath(item: StashedItem) {
+  if (['image', 'audio', 'document', 'video'].includes(item.type) && item.file_path) {
+    return { isFile: true, fileType: item.type, filePath: item.file_path };
+  }
+  return { isFile: false };
 }
 
 export function App({ userId, filter }: AppProps) {
@@ -680,8 +687,8 @@ export function App({ userId, filter }: AppProps) {
         <main className="flex-1 overflow-y-auto h-full px-4 md:px-0" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 md:p-6 min-h-[80vh]">
             {dedupedItems.map((item) => {
-              // Always use file_path to get a signed URL
-              const signedUrl = useSignedUrl(item.file_path);
+              const { isFile, fileType, filePath } = getFileTypeAndPath(item);
+              const signedUrl = isFile ? useSignedUrl(filePath) : undefined;
 
               return (
                 <Card 
@@ -690,17 +697,17 @@ export function App({ userId, filter }: AppProps) {
                   onClick={() => setSelectedItem(item)}
                 >
                   {/* Card preview by type */}
-                  {item.type === 'image' && signedUrl ? (
+                  {isFile && fileType === 'image' && signedUrl ? (
                     <img
                       src={signedUrl}
                       alt={item.file_name || 'Photo'}
                       className="w-full h-48 object-cover rounded-t-xl bg-muted"
                     />
-                  ) : item.type === 'audio' && signedUrl ? (
+                  ) : isFile && fileType === 'audio' && signedUrl ? (
                     <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
                       <audio controls src={signedUrl} className="w-full max-w-xs" />
                     </div>
-                  ) : item.type === 'document' && signedUrl ? (
+                  ) : isFile && fileType === 'document' && signedUrl ? (
                     <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
                       <FileText className="h-10 w-10 text-muted-foreground mb-2" />
                       <a
@@ -713,6 +720,10 @@ export function App({ userId, filter }: AppProps) {
                       >
                         {item.file_name || 'Download document'}
                       </a>
+                    </div>
+                  ) : isFile && fileType === 'video' && signedUrl ? (
+                    <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+                      <video controls src={signedUrl} className="w-full max-w-xs" />
                     </div>
                   ) : (
                     <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
