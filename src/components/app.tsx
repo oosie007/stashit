@@ -160,6 +160,126 @@ function getFileTypeAndPath(item: StashedItem) {
   return { isFile: false };
 }
 
+// Add this new child component above the App function
+function StashCard({ item, onSelect, onToggleFavorite, onDelete }: {
+  item: StashedItem,
+  onSelect: (item: StashedItem) => void,
+  onToggleFavorite: (item: StashedItem) => void,
+  onDelete: (id: string) => void,
+}) {
+  const { isFile, fileType, filePath } = getFileTypeAndPath(item);
+  const signedUrl = isFile ? useSignedUrl(filePath) : undefined;
+  // Card preview logic:
+  let cardPreview = null;
+  if (isFile && fileType === 'image' && signedUrl) {
+    cardPreview = (
+      <img
+        src={signedUrl}
+        alt={item.file_name || 'Photo'}
+        className="w-full h-48 object-cover rounded-t-xl bg-muted"
+      />
+    );
+  } else if (item.image_url) {
+    cardPreview = (
+      <img
+        src={item.image_url}
+        alt={item.title || 'Preview'}
+        className="w-full h-48 object-cover rounded-t-xl bg-muted"
+      />
+    );
+  } else if (isFile && fileType === 'audio' && signedUrl) {
+    cardPreview = (
+      <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+        <audio controls src={signedUrl} className="w-full max-w-xs" />
+      </div>
+    );
+  } else if (isFile && fileType === 'document' && signedUrl) {
+    cardPreview = (
+      <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
+        <FileText className="h-10 w-10 text-muted-foreground mb-2" />
+        <a
+          href={signedUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline text-sm text-center break-all"
+          download={item.file_name || true}
+          onClick={e => e.stopPropagation()}
+        >
+          {item.file_name || 'Download document'}
+        </a>
+      </div>
+    );
+  } else if (isFile && fileType === 'video' && signedUrl) {
+    cardPreview = (
+      <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+        <video controls src={signedUrl} className="w-full max-w-xs" />
+      </div>
+    );
+  } else {
+    cardPreview = (
+      <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
+        <FileText className="h-10 w-10 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <Card 
+      key={item.id + '-' + item.url}
+      className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
+      onClick={() => onSelect(item)}
+    >
+      {cardPreview}
+      {/* Card content */}
+      <div className="flex-1 flex flex-col p-4 overflow-hidden">
+        <h2 className="text-base font-semibold mb-1 line-clamp-1">
+          {item.type === 'image' ? 'Photo' :
+           item.type === 'audio' ? 'Audio' :
+           item.type === 'document' ? (item.file_name || 'Document') :
+           item.title}
+        </h2>
+        {item.summary && (
+          <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
+            {item.summary}
+          </p>
+        )}
+      </div>
+      {/* Action bar at bottom */}
+      <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
+        <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={e => { e.stopPropagation(); onToggleFavorite(item); }}
+          >
+            <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
+          </Button>
+          {item.type !== 'note' && item.url && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={e => {
+                e.stopPropagation();
+                window.open(item.url, "_blank", "noopener,noreferrer");
+              }}
+              aria-label="Open link in new tab"
+            >
+              <Link className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={e => { e.stopPropagation(); onDelete(item.id); }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function App({ userId, filter }: AppProps) {
   const [items, setItems] = useState<StashedItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -686,100 +806,15 @@ export function App({ userId, filter }: AppProps) {
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto h-full px-4 md:px-0" style={{ background: 'hsla(var(--ds-background-200-value),0,0%,98%,1)' }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 md:p-6 min-h-[80vh]">
-            {dedupedItems.filter(Boolean).map((item) => {
-              const { isFile, fileType, filePath } = getFileTypeAndPath(item);
-              const signedUrl = isFile ? useSignedUrl(filePath) : undefined;
-
-              return (
-                <Card 
-                  key={item.id + '-' + item.url}
-                  className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
-                  onClick={() => setSelectedItem(item)}
-                >
-                  {/* Card preview by type */}
-                  {isFile && fileType === 'image' && signedUrl ? (
-                    <img
-                      src={signedUrl}
-                      alt={item.file_name || 'Photo'}
-                      className="w-full h-48 object-cover rounded-t-xl bg-muted"
-                    />
-                  ) : isFile && fileType === 'audio' && signedUrl ? (
-                    <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
-                      <audio controls src={signedUrl} className="w-full max-w-xs" />
-                    </div>
-                  ) : isFile && fileType === 'document' && signedUrl ? (
-                    <div className="w-full h-48 flex flex-col items-center justify-center bg-muted rounded-t-xl p-4">
-                      <FileText className="h-10 w-10 text-muted-foreground mb-2" />
-                      <a
-                        href={signedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline text-sm text-center break-all"
-                        download={item.file_name || true}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        {item.file_name || 'Download document'}
-                      </a>
-                    </div>
-                  ) : isFile && fileType === 'video' && signedUrl ? (
-                    <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
-                      <video controls src={signedUrl} className="w-full max-w-xs" />
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
-                      <FileText className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                  )}
-                  {/* Card content */}
-                  <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                    <h2 className="text-base font-semibold mb-1 line-clamp-1">
-                      {item.type === 'image' ? 'Photo' :
-                       item.type === 'audio' ? 'Audio' :
-                       item.type === 'document' ? (item.file_name || 'Document') :
-                       item.title}
-                    </h2>
-                    {item.summary && (
-                      <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
-                        {item.summary}
-                      </p>
-                    )}
-                  </div>
-                  {/* Action bar at bottom */}
-                  <div className="flex items-center justify-between border-t px-4 h-12 mt-auto">
-                    <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={e => { e.stopPropagation(); toggleFavorite(item); }}
-                      >
-                        <Heart className={`h-4 w-4 ${item.is_loved ? 'fill-current text-red-500' : ''}`} />
-                      </Button>
-                      {item.type !== 'note' && item.url && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={e => {
-                            e.stopPropagation();
-                            window.open(item.url, "_blank", "noopener,noreferrer");
-                          }}
-                          aria-label="Open link in new tab"
-                        >
-                          <Link className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={e => { e.stopPropagation(); deleteItem(item.id); }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
+            {dedupedItems.filter(Boolean).map((item) => (
+              <StashCard
+                key={item.id + '-' + item.url}
+                item={item}
+                onSelect={setSelectedItem}
+                onToggleFavorite={toggleFavorite}
+                onDelete={deleteItem}
+              />
+            ))}
           </div>
           {/* Observer div for infinite scroll - must be outside the grid */}
           <div ref={observerRef} className="h-8"></div>
