@@ -89,12 +89,16 @@ export interface StashedItem {
   user_id: string
   title: string
   url: string
-  type: 'link' | 'highlight' | 'image' | 'saved_image' | 'note'
+  type: 'link' | 'highlight' | 'image' | 'saved_image' | 'note' | 'document' | 'audio'
   summary?: string
   highlighted_text?: string
   is_loved: boolean
   created_at: string
   image_url?: string
+  document_url?: string
+  audio_url?: string
+  file_name?: string
+  mime_type?: string
   tags?: string[]
   scraped_content?: string
   ai_synopsis?: string
@@ -672,40 +676,66 @@ export function App({ userId, filter }: AppProps) {
                       <MarkdownPreview source={item.content || ''} className="markdown-preview line-clamp-8 text-sm text-muted-foreground bg-transparent" style={{ background: 'transparent' }} />
                     </div>
                   </div>
-                ) : item.type === 'highlight' ? (
-                  <div className="flex-1 flex flex-col p-4 overflow-hidden">
-                    <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
-                    {item.highlighted_text && (
-                      <blockquote
-                        className="border-l-4 border-primary pl-4 my-2 text-sm text-muted-foreground bg-muted/30 rounded flex-1 overflow-hidden"
-                        style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 12,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          minHeight: 0,
-                        }}
+                ) : item.type === 'image' && item.image_url ? (
+                  <>
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="w-full h-32 object-cover rounded-t-xl"
+                    />
+                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
+                      {item.summary && (
+                        <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
+                          {item.summary}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : item.type === 'document' && item.document_url ? (
+                  <>
+                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
+                      <FileText className="h-8 w-8 text-muted-foreground mr-2" />
+                      <a
+                        href={item.document_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline text-sm"
+                        download={item.file_name || true}
                       >
-                        {item.highlighted_text}
-                      </blockquote>
-                    )}
-                  </div>
+                        {item.file_name || 'Download document'}
+                      </a>
+                    </div>
+                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.file_name || item.title}</h2>
+                      {item.summary && (
+                        <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
+                          {item.summary}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : item.type === 'audio' && item.audio_url ? (
+                  <>
+                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
+                      <audio controls src={item.audio_url} className="w-full">
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                    <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                      <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.file_name || item.title}</h2>
+                      {item.summary && (
+                        <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
+                          {item.summary}
+                        </p>
+                      )}
+                    </div>
+                  </>
                 ) : (
                   <>
-                    {/* Image at the top */}
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.title}
-                        className="w-full h-32 object-cover rounded-t-xl"
-                      />
-                    ) : (
-                      <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
-                        <Link className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    {/* Card content for non-highlights */}
+                    <div className="w-full h-32 bg-muted flex items-center justify-center rounded-t-xl">
+                      <Link className="h-8 w-8 text-muted-foreground" />
+                    </div>
                     <div className="flex-1 flex flex-col p-4 overflow-hidden">
                       <h2 className="text-base font-semibold mb-1 line-clamp-1">{item.title}</h2>
                       {item.summary && (
