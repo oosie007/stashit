@@ -270,7 +270,7 @@ function StashCard({ item, onSelect, onToggleFavorite, onDelete }: {
       <div className="flex-1 flex flex-col p-4 overflow-hidden">
         {item.type === 'link' && item.title && (
           <div className="mb-1">
-            <span className="block font-bold text-base leading-tight mb-1">{item.title}</span>
+            <span className="block font-bold text-base leading-tight mb-1 line-clamp-2">{item.title}</span>
           </div>
         )}
         {item.summary && (
