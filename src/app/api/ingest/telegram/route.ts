@@ -44,8 +44,8 @@ export async function POST(req: Request) {
       insertData.file_path = file_path
       if (file_name) insertData.file_name = file_name
       if (mime_type) insertData.mime_type = mime_type
-      if (['document', 'audio', 'image', 'video'].includes(type)) {
-        insertData.title = file_name || type || 'Untitled';
+      if (["document", "audio", "image", "video"].includes(type)) {
+        insertData.title = file_name || type || "Untitled";
       }
     } else if (detectedUrl) {
       // Handle link: enrich and save
@@ -72,6 +72,32 @@ export async function POST(req: Request) {
     if (error) {
       console.error('[Telegram Ingest] Insert error:', error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    }
+
+    // Generate and save thumbnail for PDF or video
+    if (file_path && inserted && (insertData.type === 'document' || insertData.type === 'video')) {
+      let thumbApi = null;
+      if (insertData.type === 'document' && file_name && file_name.toLowerCase().endsWith('.pdf')) {
+        thumbApi = '/api/generate-pdf-thumbnail';
+      } else if (insertData.type === 'video') {
+        thumbApi = '/api/generate-video-thumbnail';
+      }
+      if (thumbApi) {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+          const thumbRes = await fetch(baseUrl + thumbApi, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_path, bucket: 'stashit-bucket' }),
+          });
+          const { thumbnail_url } = await thumbRes.json();
+          if (thumbnail_url) {
+            await supabase.from('stashed_items').update({ thumbnail_url }).eq('id', inserted.id);
+          }
+        } catch (err) {
+          console.error('Thumbnail generation failed:', err);
+        }
+      }
     }
     console.log('[Telegram Ingest] Saved:', inserted)
     return NextResponse.json({ success: true, data: inserted })

@@ -108,6 +108,7 @@ export interface StashedItem {
   ai_synopsis_takeaways?: string
   content?: string
   file_path?: string // Added file_path to StashedItem interface
+  thumbnail_url?: string // Added thumbnail_url for previews
 }
 
 type LayoutType = 'card' | 'list'
@@ -192,6 +193,22 @@ function StashCard({ item, onSelect, onToggleFavorite, onDelete }: {
       <div className="w-full h-48 flex items-center justify-center bg-muted rounded-t-xl">
         <audio controls src={signedUrl} className="w-full max-w-xs" />
       </div>
+    );
+  } else if (isFile && fileType === 'document' && item.thumbnail_url) {
+    cardPreview = (
+      <img
+        src={item.thumbnail_url}
+        alt={item.file_name || 'Document preview'}
+        className="w-full h-48 object-cover rounded-t-xl bg-muted"
+      />
+    );
+  } else if (isFile && fileType === 'video' && item.thumbnail_url) {
+    cardPreview = (
+      <img
+        src={item.thumbnail_url}
+        alt={item.file_name || 'Video preview'}
+        className="w-full h-48 object-cover rounded-t-xl bg-muted"
+      />
     );
   } else if (isFile && fileType === 'document' && signedUrl) {
     // PDF preview
