@@ -3,28 +3,28 @@ import { supabase } from '@/lib/supabase'
 import { getUserIdByTelegramId } from '@/lib/supabase/telegram'
 import { scrapeUrl } from '@/lib/utils'; 
 
-function detectFileType(fileName: string = '', mimeType: string = ''): { type: string, field: string } {
+function detectFileType(fileName: string = '', mimeType: string = ''): { type: string } {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   if (mimeType.startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
-    return { type: 'image', field: 'image_url' };
+    return { type: 'image' };
   }
   if (mimeType.startsWith('audio/') || ['mp3','wav','ogg','m4a','aac'].includes(ext)) {
-    return { type: 'audio', field: 'audio_url' };
+    return { type: 'audio' };
   }
   if (mimeType.startsWith('video/') || ['mp4','mov','avi','webm','mkv'].includes(ext)) {
-    return { type: 'video', field: 'video_url' };
+    return { type: 'video' };
   }
   if (['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','odt','csv','zip','rar'].includes(ext)) {
-    return { type: 'document', field: 'document_url' };
+    return { type: 'document' };
   }
   // Default to document for unknown
-  return { type: 'document', field: 'document_url' };
+  return { type: 'document' };
 }
 
 export async function POST(req: Request) {
   try {
     const data = await req.json()
-    const { content, file_url, url, telegram_user_id, file_name, mime_type } = data
+    const { content, file_url, file_path, url, telegram_user_id, file_name, mime_type } = data
     if (!telegram_user_id) {
       return NextResponse.json({ success: false, error: 'Missing telegram_user_id' }, { status: 400 })
     }
@@ -37,17 +37,13 @@ export async function POST(req: Request) {
     let insertData: any = { user_id }
     const urlRegex = /(https?:\/\/[^\s]+)/g
     let detectedUrl = url || (typeof content === 'string' && content.match(urlRegex)?.[0])
-    if (file_url) {
+    if (file_path) {
       // Detect file type
-      const { type, field } = detectFileType(file_name, mime_type)
+      const { type } = detectFileType(file_name, mime_type)
       insertData.type = type
-      insertData[field] = file_url
-      insertData.file_url = file_url
+      insertData.file_path = file_path
       if (file_name) insertData.file_name = file_name
       if (mime_type) insertData.mime_type = mime_type
-      // For images, also set image_url for legacy UI
-      if (type === 'image') insertData.image_url = file_url
-      // For documents, set title to file_name
       if (['document', 'audio', 'image', 'video'].includes(type)) {
         insertData.title = file_name || type || 'Untitled';
       }
@@ -58,7 +54,6 @@ export async function POST(req: Request) {
       insertData.url = detectedUrl
       insertData.title = meta?.title || detectedUrl
       insertData.summary = meta?.description || ''
-      insertData.image_url = meta?.image || meta?.favicon || null
       insertData.content = content // Optionally save original message
     } else if (content) {
       // Fallback: save as note
