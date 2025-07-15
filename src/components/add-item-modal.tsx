@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import Papa from 'papaparse';
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/mantine';
 
-const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
+const BlockNoteEditor = dynamic(() => import('./blocknote-editor'), { ssr: false });
 
 interface AddItemModalProps {
   open: boolean;
@@ -95,7 +97,7 @@ export function AddItemModal({ open, onOpenChange, onSave, loading }: AddItemMod
                 <div>
                   <Label htmlFor="note-content">Content</Label>
                   <div className="border rounded-md overflow-hidden bg-background">
-                    <MDEditor value={content} onChange={v => setContent(v || '')} height={350} previewOptions={{ className: 'text-sm text-muted-foreground' }} />
+                    <BlockNoteEditor value={content} onChange={setContent} />
                   </div>
                 </div>
               </div>

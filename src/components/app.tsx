@@ -33,6 +33,7 @@ import {
   Plus,
   ArrowDownAZ,
   ArrowUpAZ,
+  Search
 } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import {
@@ -78,10 +79,9 @@ import UserMenu from '@/components/user-menu'
 import { Sidebar } from '@/components/Sidebar'
 import dynamic from 'next/dynamic'
 import { AddItemModal } from './add-item-modal'
-import MarkdownPreview from '@uiw/react-markdown-preview'
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Search } from "lucide-react"
-const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/mantine';
+const BlockNoteEditor = dynamic(() => import('./blocknote-editor'), { ssr: false });
 
 export interface StashedItem {
   id: string
@@ -159,6 +159,25 @@ function getFileTypeAndPath(item: StashedItem) {
     return { isFile: true, fileType: item.type, filePath: item.file_path };
   }
   return { isFile: false };
+}
+
+// Helper to get a preview from BlockNote content
+function getNotePreview(content?: string): string {
+  if (!content) return '';
+  try {
+    const blocks = JSON.parse(content);
+    if (Array.isArray(blocks) && blocks.length > 0) {
+      // BlockNote v1: blocks[0].content is a string
+      if (typeof blocks[0].content === 'string') {
+        return blocks[0].content;
+      }
+      // BlockNote v2: blocks[0].children is an array of text nodes
+      if (Array.isArray(blocks[0].children) && blocks[0].children.length > 0) {
+        return blocks[0].children.map((child: any) => child.text || '').join(' ');
+      }
+    }
+  } catch {}
+  return '';
 }
 
 // Add this new child component above the App function
@@ -262,30 +281,32 @@ function StashCard({ item, onSelect, onToggleFavorite, onDelete }: {
   return (
     <Card 
       key={item.id + '-' + item.url}
-      className="flex flex-col h-96 group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
+      className="flex flex-col h-[28rem] group cursor-pointer hover:shadow-md transition-all relative w-full max-w-full"
       onClick={() => onSelect(item)}
     >
       {cardPreview}
       {/* Card content */}
       <div className="flex-1 flex flex-col p-4 overflow-hidden">
-        {item.type === 'link' && item.title && (
-          <div className="mb-1">
-            <span className="block font-bold text-base leading-tight mb-1 line-clamp-2">{item.title}</span>
-          </div>
+        {item.type === 'note' && (
+          <>
+            <span className="block font-bold stash-title-xl leading-tight mb-1 line-clamp-2">{item.title}</span>
+            <p className="stash-text-base text-muted-foreground line-clamp-4 mt-2">
+              {getNotePreview(item.content) || 'No preview available'}
+            </p>
+          </>
         )}
-        {item.summary && (
-          <p className="text-sm text-muted-foreground line-clamp-12 mb-1">
-            {item.summary}
-          </p>
-        )}
-        {/* fallback for other types */}
-        {item.type !== 'link' && (
-          <h2 className="text-base font-semibold mb-1 line-clamp-1">
-            {item.type === 'image' ? 'Photo' :
-             item.type === 'audio' ? 'Audio' :
-             item.type === 'document' ? (item.file_name || 'Document') :
-             item.title}
-          </h2>
+        {item.type !== 'note' && (
+          <>
+            <h2 className="stash-title-xl font-semibold mb-1 line-clamp-2">
+              {item.type === 'image' ? 'Photo' :
+               item.type === 'audio' ? 'Audio' :
+               item.type === 'document' ? (item.file_name || 'Document') :
+               item.title}
+            </h2>
+            <p className="stash-text-base text-muted-foreground line-clamp-4 mt-2">
+              {item.summary || item.highlighted_text || 'No preview available'}
+            </p>
+          </>
         )}
       </div>
       {/* Action bar at bottom */}
@@ -325,6 +346,32 @@ function StashCard({ item, onSelect, onToggleFavorite, onDelete }: {
   );
 }
 
+// Move this to the top of the file, before the App component
+function NoteDetailEditor({ note, editMode, setEditContent }: { note: StashedItem, editMode: boolean, setEditContent: (v: string) => void }) {
+  let initialContent;
+  try {
+    initialContent = note.content ? JSON.parse(note.content) : [{ type: 'paragraph', content: '' }];
+  } catch {
+    initialContent = [{ type: 'paragraph', content: '' }];
+  }
+  const editor = useCreateBlockNote({ initialContent });
+
+  React.useEffect(() => {
+    if (editor) {
+      editor.readOnly = !editMode;
+    }
+  }, [editMode, editor]);
+
+  return (
+    <BlockNoteView
+      key={note.id}
+      editor={editor}
+      readOnly={!editMode}
+      {...(editMode ? { onChange: () => setEditContent(JSON.stringify(editor.document)) } : {})}
+    />
+  );
+}
+
 export function App({ userId, filter }: AppProps) {
   const [items, setItems] = useState<StashedItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -345,15 +392,18 @@ export function App({ userId, filter }: AppProps) {
   const [selectedListItem, setSelectedListItem] = useState<StashedItem | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [addLoading, setAddLoading] = useState(false)
+  // Restore editMode, editTitle, and editLoading state
   const [editMode, setEditMode] = useState(false);
-  const [editContent, setEditContent] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [editContent, setEditContent] = useState('');
   const observerRef = useRef<HTMLDivElement | null>(null);
   const [sortDesc, setSortDesc] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showMobileSearchBar, setShowMobileSearchBar] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Debug: log when popover opens/closes
   function handleMobileSearchOpenChange(open: boolean) {
@@ -646,20 +696,34 @@ export function App({ userId, filter }: AppProps) {
     )
   }
 
+  // Helper to ensure content is always valid BlockNote JSON
+  function ensureBlockNoteContent(content: string | undefined): string {
+    try {
+      const parsed = JSON.parse(content || '');
+      if (Array.isArray(parsed) && parsed.length > 0) return content!;
+    } catch {}
+    return JSON.stringify([{ type: 'paragraph', content: '' }]);
+  }
+
   // Handler for saving new note or URL
   async function handleAddItem(data: { type: 'note' | 'link'; title?: string; url?: string; content?: string; urls?: { url: string; created_at?: string }[] }) {
     setAddLoading(true)
     try {
-      const payload = {
+      let payload = {
         ...data,
         user_id: userId,
       };
+      if (data.type === 'note') {
+        payload = { ...payload, content: ensureBlockNoteContent(data.content) };
+      }
+      console.log('handleAddItem payload:', payload);
       const res = await fetch('/api/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const result = await res.json();
+      console.log('handleAddItem result:', result);
       if (!result.success) {
         throw new Error(result.message || 'Failed to save');
       }
@@ -672,7 +736,7 @@ export function App({ userId, filter }: AppProps) {
     }
   }
 
-  // Edit note handler
+  // Restore handleEditNote and handleSaveEditNote
   const handleEditNote = () => {
     if (selectedItem) {
       setEditTitle(selectedItem.title);
@@ -680,7 +744,6 @@ export function App({ userId, filter }: AppProps) {
       setEditMode(true);
     }
   };
-
   async function handleSaveEditNote() {
     if (!selectedItem) return;
     setEditLoading(true);
@@ -707,6 +770,21 @@ export function App({ userId, filter }: AppProps) {
       setEditLoading(false);
     }
   }
+
+  // Update the effect that syncs editContent to selectedItem.content
+  useEffect(() => {
+    if (selectedItem && selectedItem.type === 'note') {
+      setEditMode(false);
+      setEditTitle(selectedItem.title);
+      setEditContent(selectedItem.content || '');
+    }
+  }, [selectedItem]);
+
+  useEffect(() => {
+    if (selectedItem && selectedItem.type === 'note') {
+      console.log('Opening note detail, selectedItem.content:', selectedItem.content);
+    }
+  }, [selectedItem]);
 
   if (loading) {
     return (
@@ -866,7 +944,28 @@ export function App({ userId, filter }: AppProps) {
           {loadingMore && <div className="text-center py-4 text-muted-foreground">Loading more...</div>}
 
           {/* Detail Modal for selected item */}
-          <Dialog open={!!selectedItem} onOpenChange={open => { if (!open) { setSelectedItem(null); setEditMode(false); } }}>
+          <Dialog open={!!selectedItem} onOpenChange={async open => {
+            if (!open && selectedItem && selectedItem.type === 'note' && editContent !== (selectedItem.content || '')) {
+              setSaveStatus('saving');
+              console.log('Saving note on modal close:', { id: selectedItem.id, content: editContent });
+              const res = await fetch('/api/items', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: selectedItem.id,
+                  type: 'note',
+                  title: selectedItem.title,
+                  content: editContent,
+                  user_id: userId,
+                }),
+              });
+              const result = await res.json();
+              console.log('Save result:', result);
+              setSaveStatus('saved');
+              setTimeout(() => setSaveStatus('idle'), 1000);
+            }
+            if (!open) setSelectedItem(null);
+          }}>
             <DialogContent className="max-w-3xl w-full p-0 overflow-hidden flex flex-col">
               {selectedItem && (
                 <div className="flex flex-col h-full max-h-[80vh] relative">
@@ -900,15 +999,10 @@ export function App({ userId, filter }: AppProps) {
                     )}
                   </DialogTitle>
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                    {/* Show full note content if item is a note */}
-                    {selectedItem.type === 'note' && (
-                      editMode ? (
-                        <div className="border rounded-md overflow-hidden bg-background">
-                          <MDEditor value={editContent} onChange={v => setEditContent(v || '')} height={350} previewOptions={{ className: 'text-sm text-muted-foreground' }} />
-                        </div>
-                      ) : (
-                        <MarkdownPreview source={selectedItem.content || ''} className="markdown-preview bg-transparent" style={{ background: 'transparent' }} />
-                      )
+                    {selectedItem && selectedItem.type === 'note' && (
+                      <div className="border rounded-md overflow-hidden bg-background">
+                        <NoteDetailEditor note={{ ...selectedItem, content: editMode ? editContent : selectedItem.content }} editMode={editMode} setEditContent={setEditContent} />
+                      </div>
                     )}
                     {/* Show full highlight text if item is a highlight */}
                     {selectedItem.type === 'highlight' && selectedItem.highlighted_text && (
